@@ -1,8 +1,8 @@
 package queue
 
 import (
-	"fmt"
 	"sync"
+	"time"
 
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/models/task"
 )
@@ -12,44 +12,53 @@ const (
 )
 
 type MemoryQueue struct {
-	tasks []*task.Task
+	Tasks []*task.Task
 	Mutex sync.Mutex
 }
 
 func NewMemoryQueue() *MemoryQueue {
 	return &MemoryQueue{
-		tasks: make([]*task.Task, taskQueueBufferSize),
+		Tasks: make([]*task.Task, 0, taskQueueBufferSize),
 	}
 }
 
-func (mq *MemoryQueue) Enqueue(t *task.Task) error {
+func appendTask(t *task.Task, mq *MemoryQueue) {
 	mq.Mutex.Lock()
 	defer mq.Mutex.Unlock()
-	size := len(mq.tasks)
-	mq.tasks = append(mq.tasks, t)
-	if len(mq.tasks) > size {
-		return nil
-	}
-	return fmt.Errorf("failed to enqueue task")
+	mq.Tasks = append(mq.Tasks, t)
 }
 
-func (mq *MemoryQueue) Dequeue() (*task.Task, error) {
-	mq.Mutex.Lock()
-	defer mq.Mutex.Unlock()
-	if len(mq.tasks) == 0 {
-		return nil, fmt.Errorf("no tasks in queue")
+func (mq *MemoryQueue) Enqueue(t *task.Task, signalCh chan struct{}) {
+	appendTask(t, mq)
+	t.Mu.Lock()
+	defer t.Mu.Unlock()
+	select {
+	case signalCh <- struct{}{}:
+	default:
 	}
-	t := mq.tasks[0]
-	mq.tasks = mq.tasks[1:]
-	return t, nil
+
+	runAt := t.RunAt
+	if !t.NextRunAt.IsZero() {
+		runAt = t.NextRunAt
+	}
+	if !runAt.IsZero() && runAt.After(time.Now()) {
+		go func(d time.Duration) {
+			time.Sleep(d)
+			select {
+			case signalCh <- struct{}{}:
+			default:
+			}
+		}(time.Until(runAt))
+	}
 }
 
-func (mq *MemoryQueue) GetTask() (*task.Task, error) {
+func (mq *MemoryQueue) DequeueTask(taskID string) {
 	mq.Mutex.Lock()
 	defer mq.Mutex.Unlock()
-	if len(mq.tasks) == 0 {
-		return nil, fmt.Errorf("no tasks in queue")
+	for i, t := range mq.Tasks {
+		if t.ID == taskID {
+			mq.Tasks = append(mq.Tasks[:i], mq.Tasks[i+1:]...)
+			return
+		}
 	}
-	t := mq.tasks[0]
-	return t, nil
 }

@@ -1,40 +1,62 @@
 package worker
 
 import (
+	"context"
 	"fmt"
+	"math/rand"
+	"time"
 
-	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/core/app"
+	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/models/task"
+	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/queue"
 )
 
-// type Worker struct {
-// 	ID        string
-// 	LeaseTime time.Time
-// }
+const (
+	leaseTime = 8 * time.Second
+)
 
-// func NewWorker() *Worker {
-// 	return &Worker{
-// 		ID: fmt.Sprintf("%v", uuid.New().String()),
-// 	}
-// }
+func ProcessTask(memoryQueue *queue.MemoryQueue, maxWorkers int, ctx context.Context) {
+	for range maxWorkers {
+		go func() {
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				default:
+				}
+				memoryQueue.Mutex.Lock()
+				t, err := findReadyTask(memoryQueue)
+				if err != nil {
+					memoryQueue.Mutex.Unlock()
+					time.Sleep(100 * time.Millisecond)
+					continue
+				}
+				t.MarkLeased(int(leaseTime))
+				memoryQueue.Mutex.Unlock()
 
-// func (w *Worker) Start() {
-// 	fmt.Printf("Worker %s started\n", w.ID)
-// }
+				fmt.Printf("Worker processing task %s\n", t.ID)
 
-// func (w *Worker) Stop() {
-// 	fmt.Printf("Worker %s stopped\n", w.ID)
-// }
-
-func ProcessTask() {
-	task, err := app.MemoryQueue.GetTask()
-	if err != nil {
-		fmt.Println("No task to process:", err)
-		return
+				time.Sleep(3 * time.Second)
+				if rand.Intn(2) == 0 {
+					t.MarkCompleted()
+					fmt.Printf("Task %s completed\n", t.ID)
+					memoryQueue.DequeueTask(t.ID)
+				} else {
+					t.MarkFailed("Fatal: Task failed due to random error")
+				}
+			}
+		}()
 	}
-	fmt.Printf("Task %s is being processed\n", task.ID)
-	if task.IsReadyToRun(){
-		fmt.Printf("Task %s is ready to run\n", task.ID)
-		
-	}
+}
 
+func findReadyTask(mq *queue.MemoryQueue) (*task.Task, error) {
+	for _, t := range mq.Tasks {
+		t.Mu.Lock()
+		defer t.Mu.Unlock()
+		isReady := t.State == "ready"
+
+		if isReady {
+			return t, nil
+		}
+	}
+	return nil, fmt.Errorf("fatal: no ready tasks")
 }

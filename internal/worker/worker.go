@@ -1,7 +1,6 @@
 package worker
 
 import (
-	"context"
 	"fmt"
 	"math/rand"
 	"time"
@@ -14,15 +13,10 @@ const (
 	leaseTime = 8 * time.Second
 )
 
-func ProcessTask(memoryQueue *queue.MemoryQueue, maxWorkers int, ctx context.Context) {
+func ProcessTask(memoryQueue *queue.MemoryQueue, maxWorkers int, resultQueue *queue.ResultQueue) {
 	for range maxWorkers {
 		go func() {
 			for {
-				select {
-				case <-ctx.Done():
-					return
-				default:
-				}
 				memoryQueue.Mutex.Lock()
 				t, err := findReadyTask(memoryQueue)
 				if err != nil {
@@ -39,10 +33,11 @@ func ProcessTask(memoryQueue *queue.MemoryQueue, maxWorkers int, ctx context.Con
 				if rand.Intn(2) == 0 {
 					t.MarkCompleted()
 					fmt.Printf("Task %s completed\n", t.ID)
-					memoryQueue.DequeueTask(t.ID)
 				} else {
 					t.MarkFailed("Fatal: Task failed due to random error")
 				}
+				resultQueue.Enqueue(t)
+				memoryQueue.DequeueTask(t.ID)
 			}
 		}()
 	}

@@ -14,22 +14,24 @@ const (
 )
 
 type Task struct {
-	ID         string
-	Payload    []byte
-	State      string
-	RunAt      time.Time
-	NextRunAt  time.Time
-	LeaseUntil time.Time
+	ID         string    `json:"id"`
+	Name       string    `json:"name"`
+	Payload    string    `json:"payload"`
+	State      string    `json:"state"`
+	RunAt      time.Time `json:"run_at"`
+	NextRunAt  time.Time `json:"next_run_at"`
+	LeaseUntil time.Time `json:"lease_until"`
 	MaxRetries int
 	Retries    int
 	Error      string
 	UpdatedAt  time.Time
-	Mu         sync.Mutex
+	Mu         sync.Mutex `json:"-"`
 }
 
-func NewTask(name string, payload []byte, runAt time.Time) *Task {
+func NewTask(name string, payload string, runAt time.Time) *Task {
 	return &Task{
 		ID:         uuid.New().String()[:8],
+		Name:       name,
 		Payload:    payload,
 		State:      "pending",
 		RunAt:      runAt,

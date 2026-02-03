@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/core/app"
+	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/db"
 	routers "github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/http/router"
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/scheduler"
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/worker"
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 const (
@@ -20,8 +23,22 @@ var TaskChannel = make(chan struct{}, taskChannelBufferSize)
 
 var router *gin.Engine
 
+func Load() error {
+	return godotenv.Load("../.env")
+}
 func main() {
+	err := Load()
+	if err != nil {
+		panic("Error loading .env file")
+	}
 
+	app.Databasehandle, err = db.SetupDatabase()
+	if err != nil {
+		fmt.Printf("Database setup error: %v\n", err)
+		panic("Error setting up database")
+	} else {
+		println("Database set up successfully")
+	}
 	// for i := 0; i < 3; i++ {
 	// 	t := task.NewTask("test-task", "payload", time.Now())
 	// 	go app.MemoryQueue.Enqueue(t, app.SignalCh)

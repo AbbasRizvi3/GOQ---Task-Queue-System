@@ -1,7 +1,15 @@
 package dashboard
 
-import "github.com/gin-gonic/gin"
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
 
 func DashboardHandler(c *gin.Context) {
-	c.String(200, "hello")
+	if c.Request.Method == "GET" {
+		c.HTML(http.StatusOK, "dashboard.html", nil)
+	} else {
+		c.String(http.StatusMethodNotAllowed, "method not allowed")
+	}
 }

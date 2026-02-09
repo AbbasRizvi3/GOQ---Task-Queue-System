@@ -34,6 +34,14 @@ func checkPasswordHash(password, hash string) bool {
 	return err == nil
 }
 
+func LoginPageHandler(c *gin.Context) {
+	if c.Request.Method == "GET" {
+		c.HTML(http.StatusOK, "login.html", nil)
+	} else {
+		c.String(http.StatusMethodNotAllowed, "method not allowed")
+	}
+}
+
 func LoginHandler(c *gin.Context) {
 	if c.Request.Method == "POST" {
 		var req auth.LoginRequest

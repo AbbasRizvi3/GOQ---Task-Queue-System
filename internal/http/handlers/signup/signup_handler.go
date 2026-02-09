@@ -14,6 +14,14 @@ func hashPassword(password string) (string, error) {
 	return string(bytes), err
 }
 
+func SignupPageHandler(c *gin.Context) {
+	if c.Request.Method == "GET" {
+		c.HTML(http.StatusOK, "signup.html", nil)
+	} else {
+		c.String(http.StatusMethodNotAllowed, "method not allowed")
+	}
+}
+
 func SignupHandler(c *gin.Context) {
 	if c.Request.Method == "POST" {
 		var req auth.SignupRequest

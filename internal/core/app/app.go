@@ -7,7 +7,5 @@ import (
 )
 
 var MemoryQueue queue.MemoryQueue = *queue.NewMemoryQueue()
-var ResultQueue queue.ResultQueue = *queue.NewResultQueue()
-
-var SignalCh chan struct{} = make(chan struct{}, 1)
+var ProcessSignal chan struct{} = make(chan struct{}, 100)
 var Databasehandle *sql.DB

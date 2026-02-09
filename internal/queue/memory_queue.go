@@ -1,8 +1,8 @@
 package queue
 
 import (
+	"fmt"
 	"sync"
-	"time"
 
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/models/task"
 )
@@ -22,43 +22,44 @@ func NewMemoryQueue() *MemoryQueue {
 	}
 }
 
-func appendTask(t *task.Task, mq *MemoryQueue) {
-	mq.Mutex.Lock()
-	defer mq.Mutex.Unlock()
-	mq.Tasks = append(mq.Tasks, t)
-}
-
 func (mq *MemoryQueue) Enqueue(t *task.Task, signalCh chan struct{}) {
-	appendTask(t, mq)
-	t.Mu.Lock()
-	defer t.Mu.Unlock()
-	select {
-	case signalCh <- struct{}{}:
-	default:
-	}
-
-	runAt := t.RunAt
-	if !t.NextRunAt.IsZero() {
-		runAt = t.NextRunAt
-	}
-	if !runAt.IsZero() && runAt.After(time.Now()) {
-		go func(d time.Duration) {
-			time.Sleep(d)
-			select {
-			case signalCh <- struct{}{}:
-			default:
-			}
-		}(time.Until(runAt))
-	}
-}
-
-func (mq *MemoryQueue) DequeueTask(taskID string) {
 	mq.Mutex.Lock()
 	defer mq.Mutex.Unlock()
-	for i, t := range mq.Tasks {
-		if t.ID == taskID {
-			mq.Tasks = append(mq.Tasks[:i], mq.Tasks[i+1:]...)
+	for _, existing := range mq.Tasks {
+		if existing.ID == t.ID {
 			return
 		}
 	}
+	mq.Tasks = append(mq.Tasks, t)
+}
+
+func (mq *MemoryQueue) DequeueTask(taskID string) (*task.Task, error) {
+	mq.Mutex.Lock()
+	defer mq.Mutex.Unlock()
+
+	for i := len(mq.Tasks) - 1; i >= 0; i-- {
+		if mq.Tasks[i].ID == taskID {
+			t := mq.Tasks[i]
+
+			mq.Tasks = append(mq.Tasks[:i], mq.Tasks[i+1:]...)
+
+			return t, nil
+		}
+	}
+
+	return nil, fmt.Errorf("task with ID %s not found", taskID)
+}
+
+func (mq *MemoryQueue) RemoveTask(taskID string) error {
+	mq.Mutex.Lock()
+	defer mq.Mutex.Unlock()
+
+	for i := len(mq.Tasks) - 1; i >= 0; i-- {
+		if mq.Tasks[i].ID == taskID {
+			mq.Tasks = append(mq.Tasks[:i], mq.Tasks[i+1:]...)
+			return nil
+		}
+	}
+
+	return fmt.Errorf("task with ID %s not found", taskID)
 }

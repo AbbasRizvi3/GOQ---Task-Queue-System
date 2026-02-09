@@ -13,14 +13,6 @@ import (
 	"github.com/joho/godotenv"
 )
 
-const (
-	taskChannelBufferSize = 100
-)
-
-var TaskChannel = make(chan struct{}, taskChannelBufferSize)
-
-// var wg sync.WaitGroup
-
 var router *gin.Engine
 
 func Load() error {
@@ -39,26 +31,14 @@ func main() {
 	} else {
 		println("Database set up successfully")
 	}
-	// for i := 0; i < 3; i++ {
-	// 	t := task.NewTask("test-task", "payload", time.Now())
-	// 	go app.MemoryQueue.Enqueue(t, app.SignalCh)
-	// }
-
-	// for i := 0; i < 80; i++ {
-	// 	t := task.NewTask("test-task", "payload", time.Now().Add(5*time.Second))
-	// 	go app.MemoryQueue.Enqueue(t, app.SignalCh)
-	// }
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	// wg.Add(1)
-	go scheduler.ScheduleTasks(ctx, &app.MemoryQueue, app.SignalCh)
-	// ctx2, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	go scheduler.ScheduleTasks(ctx, &app.MemoryQueue)
 	defer cancel()
 
-	go worker.ProcessTask(&app.MemoryQueue, 5, &app.ResultQueue)
+	go worker.ProcessTask(&app.MemoryQueue)
 
-	// wg.Wait() // for now wg is not reduced anywhere, so main will wait indefinitely, this will be catered with when routers are added
 	router = routers.SetUpRoutes()
 
 	router.Run(":8000")

@@ -19,7 +19,6 @@ func verifyToken(tokenString string) (*jwt.MapClaims, error) {
 		}
 		return []byte(secretKey), nil
 	})
-	fmt.Println("Verified token: ", tokenString)
 
 	if err != nil {
 		return nil, err

@@ -1,7 +1,6 @@
 package login
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 	"time"
@@ -16,18 +15,17 @@ import (
 var secretKey = os.Getenv("JWT_SECRET")
 var tokenExpiryHours = time.Hour * 24
 
-func createToken(username string) (string, error) {
+func createToken(email string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256,
 		jwt.MapClaims{
-			"username": username,
-			"exp":      time.Now().Add(tokenExpiryHours).Unix(),
+			"email": email,
+			"exp":   time.Now().Add(tokenExpiryHours).Unix(),
 		})
 
 	tokenString, err := token.SignedString([]byte(secretKey))
 	if err != nil {
 		return "", err
 	}
-	fmt.Println("Generated Token: ", tokenString)
 	return tokenString, nil
 }
 

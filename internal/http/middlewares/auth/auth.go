@@ -38,8 +38,6 @@ func verifyToken(tokenString string) (*jwt.MapClaims, error) {
 
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Header("Content-Type", "application/json")
-
 		var tokenString string
 		authHeader := c.GetHeader("Authorization")
 		if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
@@ -47,7 +45,11 @@ func AuthMiddleware() gin.HandlerFunc {
 		} else {
 			cookieToken, err := c.Cookie("auth_token")
 			if err != nil {
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "Missing token"})
+				c.HTML(http.StatusMethodNotAllowed, "error.html", gin.H{
+					"Code":        http.StatusUnauthorized,
+					"Message":     "Unauthorized",
+					"Description": "You need to log in to access this page.",
+				})
 				c.Abort()
 				return
 			}
@@ -56,13 +58,21 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		claims, err := verifyToken(tokenString)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+			c.HTML(http.StatusUnauthorized, "error.html", gin.H{
+				"Code":        http.StatusUnauthorized,
+				"Message":     "Unauthorized",
+				"Description": "Invalid token.",
+			})
 			c.Abort()
 			return
 		}
 		if username, ok := (*claims)["username"].(string); ok {
 			c.Set("username", username)
 		}
+		if id, ok := (*claims)["id"].(string); ok {
+			c.Set("id", id)
+		}
+
 		c.Next()
 	}
 }

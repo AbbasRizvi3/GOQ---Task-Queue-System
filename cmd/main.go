@@ -8,6 +8,7 @@ import (
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/db"
 	routers "github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/http/router"
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/scheduler"
+	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/template"
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/worker"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -40,6 +41,7 @@ func main() {
 	go worker.ProcessTask(&app.MemoryQueue)
 
 	router = routers.SetUpRoutes()
+	template.SetupTemplate(router)
 
 	router.Run(":8000")
 }

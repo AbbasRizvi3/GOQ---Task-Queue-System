@@ -10,7 +10,7 @@ import (
 func TestNewTask(t *testing.T) {
 	name := "test task"
 	payload := "test payload"
-	runAt := time.Now().UTC()
+	runAt := time.Now()
 
 	tsk := task.NewTask(name, payload, runAt)
 
@@ -32,7 +32,7 @@ func TestNewTask(t *testing.T) {
 }
 
 func TestGetState(t *testing.T) {
-	tsk := task.NewTask("test", "payload", time.Now().UTC())
+	tsk := task.NewTask("test", "payload", time.Now())
 	state := tsk.GetState()
 
 	if state != "pending" {
@@ -111,7 +111,7 @@ func TestIsReadyToRun(t *testing.T) {
 }
 
 func TestMarkLeased(t *testing.T) {
-	tsk := task.NewTask("test task", "payload", time.Now().UTC())
+	tsk := task.NewTask("test task", "payload", time.Now())
 	tsk.MarkLeased(15)
 
 	if tsk.GetState() != "leased" {
@@ -130,7 +130,7 @@ func TestMarkLeased(t *testing.T) {
 }
 
 func TestMarkCompleted(t *testing.T) {
-	tsk := task.NewTask("test task", "payload", time.Now().UTC())
+	tsk := task.NewTask("test task", "payload", time.Now())
 	tsk.MarkCompleted()
 
 	if tsk.GetState() != "completed" {
@@ -139,8 +139,8 @@ func TestMarkCompleted(t *testing.T) {
 }
 
 func TestMarkCanceled(t *testing.T) {
-	tsk := task.NewTask("test task", "payload", time.Now().UTC())
-	tsk.NextRunAt = time.Now().UTC().Add(1 * time.Hour)
+	tsk := task.NewTask("test task", "payload", time.Now())
+	tsk.NextRunAt = time.Now().Add(1 * time.Hour)
 
 	tsk.MarkCanceled()
 
@@ -153,7 +153,7 @@ func TestMarkCanceled(t *testing.T) {
 }
 
 func TestMarkReady(t *testing.T) {
-	tsk := task.NewTask("test task", "payload", time.Now().UTC())
+	tsk := task.NewTask("test task", "payload", time.Now())
 	tsk.MarkReady()
 
 	if tsk.GetState() != "ready" {
@@ -166,7 +166,7 @@ func TestMarkReady(t *testing.T) {
 }
 
 func TestMarkFailed_Retryable(t *testing.T) {
-	tsk := task.NewTask("test task", "payload", time.Now().UTC())
+	tsk := task.NewTask("test task", "payload", time.Now())
 	tsk.MaxRetries = 3
 	tsk.Retries = 0
 
@@ -184,7 +184,7 @@ func TestMarkFailed_Retryable(t *testing.T) {
 }
 
 func TestMarkFailed_Dead(t *testing.T) {
-	tsk := task.NewTask("test task", "payload", time.Now().UTC())
+	tsk := task.NewTask("test task", "payload", time.Now())
 	tsk.MaxRetries = 2
 	tsk.Retries = 2
 
@@ -199,7 +199,7 @@ func TestMarkFailed_Dead(t *testing.T) {
 }
 
 func TestMarkDead(t *testing.T) {
-	tsk := task.NewTask("test task", "payload", time.Now().UTC())
+	tsk := task.NewTask("test task", "payload", time.Now())
 	tsk.MarkDead("test reason")
 
 	if tsk.GetState() != "dead" {
@@ -211,7 +211,7 @@ func TestMarkDead(t *testing.T) {
 }
 
 func TestMarkRetry(t *testing.T) {
-	tsk := task.NewTask("test task", "payload", time.Now().UTC())
+	tsk := task.NewTask("test task", "payload", time.Now())
 	tsk.MarkRetry()
 
 	if tsk.GetState() != "retry" {
@@ -223,7 +223,7 @@ func TestMarkRetry(t *testing.T) {
 }
 
 func TestConcurrentStateChanges(t *testing.T) {
-	tsk := task.NewTask("test task", "payload", time.Now().UTC())
+	tsk := task.NewTask("test task", "payload", time.Now())
 	done := make(chan bool)
 
 	go func() {
@@ -258,7 +258,7 @@ func TestConcurrentStateChanges(t *testing.T) {
 }
 
 func TestRetryBackoff(t *testing.T) {
-	tsk := task.NewTask("test task", "payload", time.Now().UTC())
+	tsk := task.NewTask("test task", "payload", time.Now())
 	tsk.MaxRetries = 5
 
 	for i := 0; i < 4; i++ {

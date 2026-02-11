@@ -14,34 +14,72 @@ func hashPassword(password string) (string, error) {
 	return string(bytes), err
 }
 
+func SignupPageHandler(c *gin.Context) {
+	if c.Request.Method == "GET" {
+		c.HTML(http.StatusOK, "signup.html", nil)
+	} else {
+		c.String(http.StatusMethodNotAllowed, "method not allowed")
+	}
+}
+
 func SignupHandler(c *gin.Context) {
 	if c.Request.Method == "POST" {
 		var req auth.SignupRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
+		req = auth.SignupRequest{
+			Name:     c.PostForm("name"),
+			Email:    c.PostForm("email"),
+			Password: c.PostForm("password"),
 		}
+
 		if req.Name == "" || req.Email == "" || req.Password == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "All fields are required"})
+			c.HTML(http.StatusBadRequest, "signup.html", gin.H{
+				"Error": "All fields are required",
+				"Name":  req.Name,
+				"Email": req.Email,
+			})
 			return
 		}
 		var existingID int
 		err := app.Databasehandle.QueryRow("SELECT id FROM users WHERE email = $1", req.Email).Scan(&existingID)
 		if err == nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Email already in use"})
+			c.HTML(http.StatusBadRequest, "signup.html", gin.H{
+				"Error": "Email already exists",
+				"Name":  req.Name,
+				"Email": req.Email,
+			})
+			return
+		}
+		if err != nil && err.Error() != "sql: no rows in result set" {
+			c.HTML(http.StatusInternalServerError, "signup.html", gin.H{
+				"Error": "Failed to check existing user",
+				"Name":  req.Name,
+				"Email": req.Email,
+			})
 			return
 		}
 		hashedPassword, err := hashPassword(req.Password)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+			c.HTML(http.StatusInternalServerError, "signup.html", gin.H{
+				"Error": "Failed to hash password",
+				"Name":  req.Name,
+				"Email": req.Email,
+			})
 			return
 		}
 		_, err = app.Databasehandle.Exec("INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3)", req.Name, req.Email, hashedPassword)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+			c.HTML(http.StatusInternalServerError, "signup.html", gin.H{
+				"Error": "Failed to create user",
+				"Name":  req.Name,
+				"Email": req.Email,
+			})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"message": "signup successful"})
+		c.HTML(http.StatusOK, "signup.html", gin.H{
+			"Success": "Account created successfully! Redirecting to login...",
+			"Name":    "",
+			"Email":   "",
+		})
 	} else {
 		c.String(http.StatusMethodNotAllowed, "method not allowed")
 	}

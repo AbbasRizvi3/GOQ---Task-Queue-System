@@ -15,6 +15,7 @@ const (
 
 type Task struct {
 	ID         string    `json:"id"`
+	UserID     string    `json:"user_id"`
 	Name       string    `json:"name"`
 	Payload    string    `json:"payload"`
 	State      string    `json:"state"`
@@ -58,6 +59,29 @@ func (t *Task) GetState() string {
 	return t.State
 }
 
+func (t *Task) GetNextRunAt() time.Time {
+	t.Mu.Lock()
+	defer t.Mu.Unlock()
+	return t.NextRunAt
+}
+
+func (t *Task) GetRetries() int {
+	t.Mu.Lock()
+	defer t.Mu.Unlock()
+	return t.Retries
+}
+
+func (t *Task) GetID() string {
+	t.Mu.Lock()
+	defer t.Mu.Unlock()
+	return t.ID
+}
+
+func (t *Task) GetRunAt() time.Time {
+	t.Mu.Lock()
+	defer t.Mu.Unlock()
+	return t.RunAt
+}
 func (t *Task) GetLeaseUntil() time.Time {
 	t.Mu.Lock()
 	defer t.Mu.Unlock()
@@ -82,9 +106,19 @@ func (t *Task) MarkCompleted() {
 func (t *Task) MarkCanceled() {
 	t.Mu.Lock()
 	defer t.Mu.Unlock()
-	t.State = "canceled"
-	t.UpdatedAt = time.Now()
-	t.NextRunAt = time.Time{}
+	t.Retries++
+	isMaxed := t.Retries >= t.MaxRetries
+	if isMaxed {
+		t.MarkDead("Retries Exceeded")
+	} else {
+		t.State = "canceled"
+		t.UpdatedAt = time.Now()
+		baseDelay := 60 * time.Second
+		backoff := baseDelay * time.Duration(1<<uint(t.Retries-1))
+		jitter := time.Duration(rand.Int63n(int64(backoff)/2)) - backoff/4
+
+		t.NextRunAt = time.Now().Add(backoff + jitter)
+	}
 }
 
 func (t *Task) MarkReady() {
@@ -107,7 +141,7 @@ func (t *Task) MarkFailed(reason string) {
 		now := time.Now()
 		t.Mu.Lock()
 		t.State = "retry"
-		baseDelay := 1 * time.Second
+		baseDelay := 60 * time.Second
 		backoff := baseDelay * time.Duration(1<<uint(t.Retries-1))
 		jitter := time.Duration(rand.Int63n(int64(backoff)/2)) - backoff/4
 

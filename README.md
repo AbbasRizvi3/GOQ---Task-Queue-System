@@ -202,31 +202,4 @@ Example:
 * **Phase 1:** In-memory queue & scheduler
 * **Phase 2:** SQL store, auth, Docker, CI
 * **Phase 3:** Web dashboard & UX (SSR)
-* **Phase 4 (Planned):** Observability, metrics, scaling
-
 ---
-
-## 📈 Future Improvements
-
-* Role-based access (admin vs user)
-* WebSocket-based live updates
-* Task prioritization
-* Distributed workers
-* Metrics & tracing (Prometheus)
-
----
-
-## 📄 License
-
-MIT License
-
----
-
-If you want, I can also:
-
-* Make this **shorter for GitHub**
-* Convert it into an **assignment submission README**
-* Add **screenshots section**
-* Add **API documentation section**
-
-Just tell me 👍

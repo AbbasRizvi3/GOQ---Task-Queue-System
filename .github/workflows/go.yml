@@ -19,8 +19,6 @@ jobs:
 
       - name: Build
         run: go build -v ./...
-        working-directory: ./GOQ---Task-Queue-System
 
       - name: Test
         run: go test -v ./...
-        working-directory: ./GOQ---Task-Queue-System

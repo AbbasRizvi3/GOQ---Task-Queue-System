@@ -2,47 +2,46 @@ package main
 
 import (
 	"context"
-	"sync"
-	"time"
+	"fmt"
 
-	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/models/task"
-	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/queue"
+	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/core/app"
+	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/db"
+	routers "github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/http/router"
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/scheduler"
+	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/template"
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/worker"
+	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
-const (
-	taskChannelBufferSize = 100
-)
+var router *gin.Engine
 
-var TaskChannel = make(chan struct{}, taskChannelBufferSize)
-
-var MemoryQueue queue.MemoryQueue = *queue.NewMemoryQueue()
-var SignalCh chan struct{} = make(chan struct{}, 1)
-
-var wg sync.WaitGroup
-
+func Load() error {
+	return godotenv.Load("../.env")
+}
 func main() {
-
-	for i := 0; i < 3; i++ {
-		t := task.NewTask("test-task", []byte("payload"), time.Now())
-		go MemoryQueue.Enqueue(t, SignalCh)
+	err := Load()
+	if err != nil {
+		panic("Error loading .env file")
 	}
 
-	for i := 0; i < 3; i++ {
-		t := task.NewTask("test-task", []byte("payload"), time.Now().Add(5*time.Second))
-		go MemoryQueue.Enqueue(t, SignalCh)
+	app.Databasehandle, err = db.SetupDatabase()
+	if err != nil {
+		fmt.Printf("Database setup error: %v\n", err)
+		panic("Error setting up database")
+	} else {
+		println("Database set up successfully")
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	wg.Add(1)
-	go scheduler.ScheduleTasks(ctx, &MemoryQueue, SignalCh)
-	ctx2, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	go scheduler.ScheduleTasks(ctx, &app.MemoryQueue)
 	defer cancel()
 
-	go worker.ProcessTask(&MemoryQueue, 5, ctx2)
-	
+	go worker.ProcessTask(&app.MemoryQueue)
 
-	wg.Wait() // for now wg is not reduced anywhere, so main will wait indefinitely, this will be catered with when routers are added
+	router = routers.SetUpRoutes()
+	template.SetupTemplate(router)
+
+	router.Run(":8000")
 }

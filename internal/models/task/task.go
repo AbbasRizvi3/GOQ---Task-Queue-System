@@ -14,35 +14,40 @@ const (
 )
 
 type Task struct {
-	ID         string
-	Payload    []byte
-	State      string
-	RunAt      time.Time
-	NextRunAt  time.Time
-	LeaseUntil time.Time
+	ID         string    `json:"id"`
+	UserID     string    `json:"user_id"`
+	Name       string    `json:"name"`
+	Payload    string    `json:"payload"`
+	State      string    `json:"state"`
+	RunAt      time.Time `json:"run_at"`
+	CreatedAt  time.Time `json:"created_at"`
+	NextRunAt  time.Time `json:"next_run_at"`
+	LeaseUntil time.Time `json:"lease_until"`
 	MaxRetries int
 	Retries    int
 	Error      string
 	UpdatedAt  time.Time
-	Mu         sync.Mutex
+	Mu         sync.Mutex `json:"-"`
 }
 
-func NewTask(name string, payload []byte, runAt time.Time) *Task {
+func NewTask(name string, payload string, runAt time.Time) *Task {
 	return &Task{
 		ID:         uuid.New().String()[:8],
+		Name:       name,
 		Payload:    payload,
 		State:      "pending",
 		RunAt:      runAt,
 		MaxRetries: maxRetriesDefault,
 		Retries:    0,
 		UpdatedAt:  time.Now(),
+		CreatedAt:  time.Now(),
 	}
 }
 
 func (t *Task) IsReadyToRun() bool {
 	t.Mu.Lock()
 	defer t.Mu.Unlock()
-	if (t.State == "pending" || t.State == "retry") && (t.RunAt.Before(time.Now()) || t.NextRunAt.Before(time.Now()) || t.NextRunAt.Equal(time.Now()) || t.RunAt.Equal(time.Now())) {
+	if (t.State == "pending" || t.State == "retry" || t.State == "ready") && (t.RunAt.Before(time.Now()) || t.NextRunAt.Before(time.Now()) || t.NextRunAt.Equal(time.Now()) || t.RunAt.Equal(time.Now())) {
 		return true
 	}
 	return false
@@ -54,17 +59,33 @@ func (t *Task) GetState() string {
 	return t.State
 }
 
+func (t *Task) GetNextRunAt() time.Time {
+	t.Mu.Lock()
+	defer t.Mu.Unlock()
+	return t.NextRunAt
+}
+
+func (t *Task) GetRetries() int {
+	t.Mu.Lock()
+	defer t.Mu.Unlock()
+	return t.Retries
+}
+
+func (t *Task) GetID() string {
+	t.Mu.Lock()
+	defer t.Mu.Unlock()
+	return t.ID
+}
+
+func (t *Task) GetRunAt() time.Time {
+	t.Mu.Lock()
+	defer t.Mu.Unlock()
+	return t.RunAt
+}
 func (t *Task) GetLeaseUntil() time.Time {
 	t.Mu.Lock()
 	defer t.Mu.Unlock()
 	return t.LeaseUntil
-}
-
-func (t *Task) MarkReady() {
-	t.Mu.Lock()
-	defer t.Mu.Unlock()
-	t.State = "ready"
-	t.UpdatedAt = time.Now()
 }
 
 func (t *Task) MarkLeased(leaseSecs int) {
@@ -82,6 +103,32 @@ func (t *Task) MarkCompleted() {
 	t.UpdatedAt = time.Now()
 }
 
+func (t *Task) MarkCanceled() {
+	t.Mu.Lock()
+	defer t.Mu.Unlock()
+	t.Retries++
+	isMaxed := t.Retries >= t.MaxRetries
+	if isMaxed {
+		t.MarkDead("Retries Exceeded")
+	} else {
+		t.State = "canceled"
+		t.UpdatedAt = time.Now()
+		baseDelay := 60 * time.Second
+		backoff := baseDelay * time.Duration(1<<uint(t.Retries-1))
+		jitter := time.Duration(rand.Int63n(int64(backoff)/2)) - backoff/4
+
+		t.NextRunAt = time.Now().Add(backoff + jitter)
+	}
+}
+
+func (t *Task) MarkReady() {
+	t.Mu.Lock()
+	defer t.Mu.Unlock()
+	t.State = "ready"
+	t.UpdatedAt = time.Now()
+	t.NextRunAt = time.Now()
+}
+
 func (t *Task) MarkFailed(reason string) {
 	t.Mu.Lock()
 	t.Retries++
@@ -91,18 +138,18 @@ func (t *Task) MarkFailed(reason string) {
 	if isMaxed {
 		t.MarkDead(reason)
 	} else {
+		now := time.Now()
 		t.Mu.Lock()
 		t.State = "retry"
-
-		baseDelay := 2 * time.Second
-		backoff := baseDelay * (1 << (t.Retries - 1))
+		baseDelay := 60 * time.Second
+		backoff := baseDelay * time.Duration(1<<uint(t.Retries-1))
 		jitter := time.Duration(rand.Int63n(int64(backoff)/2)) - backoff/4
 
-		t.NextRunAt = time.Now().Add(backoff + jitter)
+		t.NextRunAt = now.Add(backoff + jitter)
 		t.Error = reason
-		t.UpdatedAt = time.Now()
+		t.UpdatedAt = now
 		t.Mu.Unlock()
-		fmt.Printf("Retryable: Task %s failed, will retry (attempt %d/%d)\n", t.ID, t.Retries, t.MaxRetries)
+		fmt.Printf("Retryable: Task %s failed, will retry (attempt %d/%d) at %v (in ~%v)\n", t.ID, t.Retries, t.MaxRetries, t.NextRunAt, backoff+jitter)
 	}
 }
 

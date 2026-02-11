@@ -27,7 +27,7 @@ func TestGetTasksHandler_Success(t *testing.T) {
 	app.Databasehandle = db
 	app.MemoryQueue = *queue.NewMemoryQueue()
 
-	tsk := task.NewTask("test task", "payload", time.Now().UTC())
+	tsk := task.NewTask("test task", "payload", time.Now())
 	signalCh := make(chan struct{}, 100)
 	app.MemoryQueue.Enqueue(tsk, signalCh)
 
@@ -77,7 +77,7 @@ func TestGetTaskHandler_Success(t *testing.T) {
 	app.Databasehandle = db
 	app.MemoryQueue = *queue.NewMemoryQueue()
 
-	tsk := task.NewTask("test task", "payload", time.Now().UTC())
+	tsk := task.NewTask("test task", "payload", time.Now())
 	signalCh := make(chan struct{}, 100)
 	app.MemoryQueue.Enqueue(tsk, signalCh)
 

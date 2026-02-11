@@ -68,6 +68,22 @@ func ProcessTask(memoryQueue *queue.MemoryQueue) {
 					}()
 					fmt.Printf("Worker processing task %s\n", task.ID)
 					time.Sleep(5 * time.Second)
+					select {
+					case cancelID := <-app.CancelSignal:
+						if cancelID == task.ID {
+							fmt.Printf("Received cancel signal for task %s, marking as canceled\n", task.ID)
+							task.MarkCanceled()
+							SyncTaskToDB(task)
+							err := memoryQueue.RemoveTask(task.ID)
+							if err != nil {
+								fmt.Printf("Error removing canceled task %s from memory queue: %v\n", task.ID, err)
+							} else {
+								fmt.Printf("Canceled task %s removed from memory queue\n", task.ID)
+							}
+							return
+						}
+					default:
+					}
 					if task.GetState() == "canceled" {
 						fmt.Printf("Task %s was canceled, skipping processing\n", task.ID)
 						err := memoryQueue.RemoveTask(task.ID)
@@ -112,8 +128,12 @@ func ProcessTask(memoryQueue *queue.MemoryQueue) {
 }
 
 func SyncTaskToDB(t *task.Task) {
+	var nextRunAtDB interface{} = nil
+	if !t.NextRunAt.IsZero() {
+		nextRunAtDB = t.NextRunAt
+	}
 	_, err := app.Databasehandle.Exec("UPDATE tasks SET state = $1, next_run_at = $2, lease_until = $3, retries = $4, error = $5, updated_at = $6 WHERE id = $7",
-		t.State, t.NextRunAt, t.LeaseUntil, t.Retries, t.Error, time.Now(), t.ID)
+		t.State, nextRunAtDB, t.LeaseUntil, t.Retries, t.Error, time.Now(), t.ID)
 	if err != nil {
 		fmt.Println("Error syncing task to DB:", err)
 	} else {

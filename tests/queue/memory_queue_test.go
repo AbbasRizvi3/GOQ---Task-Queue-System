@@ -21,7 +21,7 @@ func TestNewMemoryQueue(t *testing.T) {
 
 func TestEnqueueSingleTask(t *testing.T) {
 	mq := queue.NewMemoryQueue()
-	tsk := task.NewTask("test", "payload", time.Now().UTC())
+	tsk := task.NewTask("test", "payload", time.Now())
 	signalCh := make(chan struct{}, 100)
 
 	mq.Enqueue(tsk, signalCh)
@@ -39,7 +39,7 @@ func TestEnqueueMultipleTasks(t *testing.T) {
 	signalCh := make(chan struct{}, 100)
 	tasks := make([]*task.Task, 5)
 	for i := 0; i < 5; i++ {
-		tasks[i] = task.NewTask("task"+string(rune(i)), "payload", time.Now().UTC())
+		tasks[i] = task.NewTask("task"+string(rune(i)), "payload", time.Now())
 		mq.Enqueue(tasks[i], signalCh)
 	}
 
@@ -51,7 +51,7 @@ func TestEnqueueMultipleTasks(t *testing.T) {
 func TestEnqueueDuplicateTask(t *testing.T) {
 	mq := queue.NewMemoryQueue()
 	signalCh := make(chan struct{}, 100)
-	tsk := task.NewTask("test", "payload", time.Now().UTC())
+	tsk := task.NewTask("test", "payload", time.Now())
 
 	mq.Enqueue(tsk, signalCh)
 	mq.Enqueue(tsk, signalCh)
@@ -64,7 +64,7 @@ func TestEnqueueDuplicateTask(t *testing.T) {
 func TestDequeueTask_Existing(t *testing.T) {
 	mq := queue.NewMemoryQueue()
 	signalCh := make(chan struct{}, 100)
-	tsk := task.NewTask("test", "payload", time.Now().UTC())
+	tsk := task.NewTask("test", "payload", time.Now())
 	mq.Enqueue(tsk, signalCh)
 
 	retrieved, err := mq.DequeueTask(tsk.ID)
@@ -98,7 +98,7 @@ func TestDequeueTask_CorrectRemoval(t *testing.T) {
 	signalCh := make(chan struct{}, 100)
 	tasks := make([]*task.Task, 3)
 	for i := 0; i < 3; i++ {
-		tasks[i] = task.NewTask("task"+string(rune(i)), "payload", time.Now().UTC())
+		tasks[i] = task.NewTask("task"+string(rune(i)), "payload", time.Now())
 		mq.Enqueue(tasks[i], signalCh)
 	}
 
@@ -120,7 +120,7 @@ func TestRemoveTask_Multiple(t *testing.T) {
 	signalCh := make(chan struct{}, 100)
 	tasks := make([]*task.Task, 5)
 	for i := 0; i < 5; i++ {
-		tasks[i] = task.NewTask("task"+string(rune(i)), "payload", time.Now().UTC())
+		tasks[i] = task.NewTask("task"+string(rune(i)), "payload", time.Now())
 		mq.Enqueue(tasks[i], signalCh)
 	}
 
@@ -140,7 +140,7 @@ func TestRemoveTask_Multiple(t *testing.T) {
 func TestQueueConcurrentOperations(t *testing.T) {
 	mq := queue.NewMemoryQueue()
 	signalCh := make(chan struct{}, 100)
-	tsk := task.NewTask("test task", "payload", time.Now().UTC())
+	tsk := task.NewTask("test task", "payload", time.Now())
 
 	go func() {
 		for i := 0; i < 10; i++ {
@@ -170,7 +170,7 @@ func TestQueueWithLargeNumberOfTasks(t *testing.T) {
 	taskCount := 100
 
 	for i := 0; i < taskCount; i++ {
-		tsk := task.NewTask("task", "payload", time.Now().UTC())
+		tsk := task.NewTask("task", "payload", time.Now())
 		mq.Enqueue(tsk, signalCh)
 	}
 
@@ -184,7 +184,7 @@ func TestEnqueueDequeueOrder(t *testing.T) {
 	signalCh := make(chan struct{}, 100)
 	tasks := make([]*task.Task, 5)
 	for i := 0; i < 5; i++ {
-		tasks[i] = task.NewTask("task"+string(rune(i)), "payload", time.Now().UTC())
+		tasks[i] = task.NewTask("task"+string(rune(i)), "payload", time.Now())
 		mq.Enqueue(tasks[i], signalCh)
 	}
 

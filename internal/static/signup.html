@@ -90,8 +90,139 @@
             color: #dc3545;
             font-size: 12px;
             margin-top: 5px;
+            display: none;
+        }
+        .password-requirements {
+            font-size: 12px;
+            color: #666;
+            margin-top: 8px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+            border-left: 3px solid #007bff;
+        }
+        .requirement {
+            margin: 4px 0;
+        }
+        .requirement.met {
+            color: #28a745;
+        }
+        .requirement.unmet {
+            color: #dc3545;
         }
     </style>
+    <script>
+        function validateEmail(email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(email);
+        }
+
+        function validateUsername(username) {
+            const usernameRegex = /^[a-zA-Z0-9_-]{3,20}$/;
+            return usernameRegex.test(username);
+        }
+
+        function validatePassword(password) {
+            return password.length >= 8;
+        }
+
+        function updatePasswordRequirements() {
+            const password = document.getElementById('password').value;
+            const minLengthReq = document.getElementById('minLengthReq');
+            
+            if (validatePassword(password)) {
+                minLengthReq.classList.remove('unmet');
+                minLengthReq.classList.add('met');
+            } else {
+                minLengthReq.classList.remove('met');
+                minLengthReq.classList.add('unmet');
+            }
+        }
+
+        function validateForm(event) {
+            event.preventDefault();
+            const errors = {};
+            
+            const name = document.getElementById('name').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (!name) {
+                errors.name = 'Name is required';
+            } else if (!validateUsername(name)) {
+                errors.name = 'Name must be 3-20 characters (alphanumeric, hyphens, underscores only)';
+            }
+
+            if (!email) {
+                errors.email = 'Email is required';
+            } else if (!validateEmail(email)) {
+                errors.email = 'Please enter a valid email address';
+            }
+
+            if (!password) {
+                errors.password = 'Password is required';
+            } else if (!validatePassword(password)) {
+                errors.password = 'Password must be at least 8 characters';
+            }
+
+            if (!confirmPassword) {
+                errors.confirmPassword = 'Please confirm your password';
+            } else if (password !== confirmPassword) {
+                errors.confirmPassword = 'Passwords do not match';
+            }
+
+            clearErrors();
+            if (Object.keys(errors).length > 0) {
+                displayErrors(errors);
+                return false;
+            }
+
+            document.querySelector('form').submit();
+        }
+
+        function displayErrors(errors) {
+            for (const [field, message] of Object.entries(errors)) {
+                const errorElement = document.getElementById(`${field}Error`);
+                if (errorElement) {
+                    errorElement.textContent = message;
+                    errorElement.style.display = 'block';
+                }
+            }
+        }
+
+        function clearErrors() {
+            const errorElements = document.querySelectorAll('.field-error');
+            errorElements.forEach(el => {
+                el.style.display = 'none';
+                el.textContent = '';
+            });
+        }
+
+         document.addEventListener('DOMContentLoaded', function() {
+            const form = document.querySelector('form');
+            const nameInput = document.getElementById('name');
+            const emailInput = document.getElementById('email');
+            const passwordInput = document.getElementById('password');
+
+            form.addEventListener('submit', validateForm);
+            passwordInput.addEventListener('input', updatePasswordRequirements);
+            
+            [nameInput, emailInput, passwordInput].forEach(input => {
+                input.addEventListener('input', clearErrors);
+            });
+
+           const successMessage = document.querySelector('.success-message');
+            if (successMessage) {
+                const messageText = successMessage.textContent.trim();
+                if (messageText) {
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 3000);
+                }
+            }
+        });
+    </script>
 </head>
 <body>
     <div class="signup-container">
@@ -107,24 +238,27 @@
         
         <form method="POST" action="/signup">
             <div class="form-group">
-                <label for="username">Username</label>
-                <input type="text" id="username" name="username" value="{{.Username}}" required>
-                {{if .Errors.Username}}<div class="field-error">{{.Errors.Username}}</div>{{end}}
+                <label for="name">Name</label>
+                <input type="text" id="name" name="name" value="{{.Name}}" required>
+                <div class="field-error" id="nameError"></div>
             </div>
             <div class="form-group">
                 <label for="email">Email</label>
                 <input type="email" id="email" name="email" value="{{.Email}}" required>
-                {{if .Errors.Email}}<div class="field-error">{{.Errors.Email}}</div>{{end}}
+                <div class="field-error" id="emailError"></div>
             </div>
             <div class="form-group">
                 <label for="password">Password</label>
                 <input type="password" id="password" name="password" required>
-                {{if .Errors.Password}}<div class="field-error">{{.Errors.Password}}</div>{{end}}
+                <div class="field-error" id="passwordError"></div>
+                <div class="password-requirements">
+                    <div class="requirement unmet" id="minLengthReq">✓ At least 8 characters</div>
+                </div>
             </div>
             <div class="form-group">
-                <label for="confirm_password">Confirm Password</label>
-                <input type="password" id="confirm_password" name="confirm_password" required>
-                {{if .Errors.ConfirmPassword}}<div class="field-error">{{.Errors.ConfirmPassword}}</div>{{end}}
+                <label for="confirmPassword">Confirm Password</label>
+                <input type="password" id="confirmPassword" name="confirmPassword" required>
+                <div class="field-error" id="confirmPasswordError"></div>
             </div>
             <button type="submit">Sign Up</button>
         </form>

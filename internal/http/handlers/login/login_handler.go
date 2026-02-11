@@ -15,10 +15,11 @@ import (
 var secretKey = os.Getenv("JWT_SECRET")
 var tokenExpiryHours = time.Hour * 24
 
-func createToken(email string) (string, error) {
+func createToken(email string, id string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256,
 		jwt.MapClaims{
 			"email": email,
+			"id":    id,
 			"exp":   time.Now().Add(tokenExpiryHours).Unix(),
 		})
 
@@ -36,7 +37,11 @@ func checkPasswordHash(password, hash string) bool {
 
 func LoginPageHandler(c *gin.Context) {
 	if c.Request.Method == "GET" {
-		c.HTML(http.StatusOK, "login.html", nil)
+		data := gin.H{
+			"Error":   "",
+			"Success": "",
+		}
+		c.HTML(http.StatusOK, "login.html", data)
 	} else {
 		c.String(http.StatusMethodNotAllowed, "method not allowed")
 	}
@@ -45,27 +50,51 @@ func LoginPageHandler(c *gin.Context) {
 func LoginHandler(c *gin.Context) {
 	if c.Request.Method == "POST" {
 		var req auth.LoginRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		req = auth.LoginRequest{
+			Email:    c.PostForm("email"),
+			Password: c.PostForm("password"),
+		}
+		if req.Email == "" || req.Password == "" {
+			c.HTML(http.StatusBadRequest, "login.html", gin.H{
+				"Error": "Email and password are required",
+				"Email": req.Email,
+			})
 			return
 		}
 		var storedHash string
 		err := app.Databasehandle.QueryRow("SELECT password_hash FROM users WHERE email = $1", req.Email).Scan(&storedHash)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid email or password"})
+			c.HTML(http.StatusUnauthorized, "login.html", gin.H{
+				"Error": "invalid email or password",
+				"Email": req.Email,
+			})
 			return
 		}
 		if !checkPasswordHash(req.Password, storedHash) {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid email or password"})
+			c.HTML(http.StatusUnauthorized, "login.html", gin.H{
+				"Error": "invalid email or password",
+				"Email": req.Email,
+			})
 			return
 		}
-		token, err := createToken(req.Email)
+		err = app.Databasehandle.QueryRow("SELECT id FROM users WHERE email = $1", req.Email).Scan(&req.ID)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create token"})
+			c.HTML(http.StatusInternalServerError, "login.html", gin.H{
+				"Error": "failed to fetch user ID",
+				"Email": req.Email,
+			})
 			return
 		}
-		c.SetCookie("auth_token", token, 3600*24, "/", "localhost", false, true)
-		c.JSON(http.StatusOK, gin.H{"message": "login successful"})
+		token, err := createToken(req.Email, req.ID)
+		if err != nil {
+			c.HTML(http.StatusInternalServerError, "login.html", gin.H{
+				"Error": "failed to create token",
+				"Email": req.Email,
+			})
+			return
+		}
+		c.SetCookie("auth_token", token, 3600*24, "/", "", false, true)
+		c.Redirect(http.StatusSeeOther, "/api/dashboard")
 	} else {
 		c.String(http.StatusMethodNotAllowed, "method not allowed")
 	}

@@ -7,9 +7,11 @@ import (
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/http/handlers/dashboard"
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/http/handlers/healthz"
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/http/handlers/login"
+	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/http/handlers/logout"
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/http/handlers/signup"
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/http/handlers/tasks"
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/http/middlewares/auth"
+	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/http/middlewares/cache"
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/http/middlewares/logging"
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/http/middlewares/recovery"
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/http/middlewares/timeout"
@@ -23,7 +25,7 @@ const (
 
 func SetUpRoutes() *gin.Engine {
 	router := gin.Default()
-	router.Use(logging.LoggingMiddleware(), timeout.TimeoutMiddleware(timeoutDuration), recovery.RecoveryMiddleware)
+	router.Use(logging.LoggingMiddleware(), timeout.TimeoutMiddleware(timeoutDuration), recovery.RecoveryMiddleware, cache.NoCacheMiddleware())
 	p := ginprom.NewPrometheus("gin")
 	p.Use(router)
 	router.GET("/healthz", healthz.HealthzHandler)
@@ -31,7 +33,11 @@ func SetUpRoutes() *gin.Engine {
 	router.POST("/login", login.LoginHandler)
 	router.GET("/signup", signup.SignupPageHandler)
 	router.POST("/signup", signup.SignupHandler)
-	group1 := router.Group("/api", auth.AuthMiddleware())
+	router.GET("/logout", logout.LogoutHandler)
+	group2 := router.Group("/", auth.AuthMiddleware(), cache.NoCacheMiddleware())
+	group2.GET("/tasks/:id", tasks.GetTaskDetailHandler)
+
+	group1 := router.Group("/api", auth.AuthMiddleware(), cache.NoCacheMiddleware())
 	group1.GET("/dashboard", dashboard.DashboardHandler)
 	group1.GET("/tasks", tasks.GetTasksHandler)
 	group1.POST("/tasks", tasks.PostTaskHandler)

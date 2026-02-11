@@ -6,257 +6,456 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Task Queue System</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: Arial, sans-serif;
-            background: #f5f5f5;
-        }
-        .navbar {
-            background: #333;
-            color: white;
-            padding: 15px 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .navbar h1 {
-            font-size: 24px;
-        }
-        .navbar a {
-            color: white;
-            text-decoration: none;
-            margin-left: 20px;
-        }
-        .navbar a:hover {
-            color: #007bff;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 20px auto;
-            padding: 0 20px;
-        }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-        }
-        .header h2 {
-            color: #333;
-            font-size: 28px;
-        }
-        .btn {
-            background: #007bff;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-        }
-        .btn:hover {
-            background: #0056b3;
-        }
-        .btn-danger {
-            background: #dc3545;
-        }
-        .btn-danger:hover {
-            background: #c82333;
-        }
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        .stat-card {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .stat-card h3 {
-            color: #666;
-            font-size: 14px;
-            margin-bottom: 10px;
-        }
-        .stat-card .number {
-            font-size: 32px;
-            color: #007bff;
-            font-weight: bold;
-        }
-        .tasks-section {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .tasks-section h3 {
-            margin-bottom: 20px;
-            color: #333;
-        }
-        .task-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px;
-            border-bottom: 1px solid #eee;
-        }
-        .task-item:last-child {
-            border-bottom: none;
-        }
-        .task-info {
-            flex: 1;
-        }
-        .task-info h4 {
-            color: #333;
-            margin-bottom: 5px;
-        }
-        .task-info p {
-            color: #666;
-            font-size: 14px;
-        }
-        .task-status {
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: bold;
-            margin-right: 10px;
-        }
-        .status-pending {
-            background: #fff3cd;
-            color: #856404;
-        }
-        .status-running {
-            background: #d1ecf1;
-            color: #0c5460;
-        }
-        .status-completed {
-            background: #d4edda;
-            color: #155724;
-        }
-        .status-failed {
-            background: #f8d7da;
-            color: #721c24;
-        }
-        .task-actions {
-            display: flex;
-            gap: 10px;
-        }
-        .task-actions a, .task-actions button {
-            padding: 8px 12px;
-            font-size: 12px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            text-decoration: none;
-        }
-        .btn-small {
-            background: #007bff;
-            color: white;
-        }
-        .btn-small:hover {
-            background: #0056b3;
-        }
-        .btn-small-danger {
-            background: #dc3545;
-            color: white;
-        }
-        .btn-small-danger:hover {
-            background: #c82333;
-        }
-        .no-tasks {
-            text-align: center;
-            padding: 40px;
-            color: #666;
-        }
-        .empty-message {
-            display: none;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; }
+        .navbar { background: #333; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
+        .navbar h1 { font-size: 24px; }
+        .navbar a { color: white; text-decoration: none; margin-left: 20px; cursor: pointer; }
+        .navbar a:hover { color: #007bff; }
+        .container { max-width: 1200px; margin: 20px auto; padding: 0 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .header h2 { color: #333; font-size: 28px; }
+        .btn { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; transition: background-color 0.2s; }
+        .btn:hover { background: #0056b3; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .stat-card h3 { color: #666; font-size: 14px; margin-bottom: 10px; }
+        .stat-card .number { font-size: 32px; color: #007bff; font-weight: bold; }
+        .tasks-section { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .tasks-section h3 { margin-bottom: 20px; color: #333; display: flex; justify-content: space-between; align-items: center; }
+        .refresh-indicator { font-size: 12px; color: #999; font-weight: normal; }
+        .task-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #eee; transition: background-color 0.2s; }
+        .task-item:hover { background-color: #f9f9f9; }
+        .task-item:last-child { border-bottom: none; }
+        .task-info { flex: 1; }
+        .task-info h4 { color: #333; margin-bottom: 5px; font-size: 16px; font-weight: 600; }
+        .task-info p { color: #666; font-size: 13px; margin-top: 5px; }
+        .task-status { padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; margin-right: 10px; text-transform: capitalize; min-width: 80px; text-align: center; }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-running { background: #d1ecf1; color: #0c5460; }
+        .status-completed { background: #d4edda; color: #155724; }
+        .status-failed { background: #f8d7da; color: #721c24; }
+        .status-dead { background: #d9534f; color: white; }
+        .status-retry { background: #ffc107; color: #333; }
+        .status-canceled { background: #6c757d; color: white; }
+        .status-leased { background: #17a2b8; color: white; }
+        .status-ready { background: #17a2b8; color: white; }
+        .task-actions { display: flex; gap: 10px; }
+        .task-actions a, .task-actions button { padding: 8px 12px; font-size: 12px; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; transition: background-color 0.2s; }
+        .btn-small { background: #007bff; color: white; }
+        .btn-small:hover { background: #0056b3; }
+        .btn-small:disabled { background: #ccc; cursor: not-allowed; }
+        .btn-small-danger { background: #dc3545; color: white; }
+        .btn-small-danger:hover { background: #c82333; }
+        .btn-small-danger:disabled { background: #ccc; cursor: not-allowed; }
+        .btn-small-cancel { background: #ff9800; color: white; }
+        .btn-small-cancel:hover { background: #e68900; }
+        .btn-small-cancel:disabled { background: #ccc; cursor: not-allowed; }
+        .no-tasks { text-align: center; padding: 40px; color: #666; }
+        .no-tasks a { color: #007bff; cursor: pointer; text-decoration: underline; }
+        .alert { padding: 12px 20px; border-radius: 4px; margin-bottom: 20px; display: none; animation: slideDown 0.3s ease-out; }
+        .alert.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; display: block; }
+        .alert.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; display: block; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .loading { text-align: center; padding: 40px; color: #666; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #007bff; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* Modal Styles */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.4); animation: fadeIn 0.3s ease-out; }
+        .modal.show { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .modal-content { background-color: white; margin: 5% auto; padding: 30px; border-radius: 8px; width: 90%; max-width: 500px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); animation: slideUp 0.3s ease-out; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: translateY(0); } }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+        .modal-header h2 { margin: 0; color: #333; }
+        .modal-close { background: none; border: none; font-size: 28px; cursor: pointer; color: #666; transition: color 0.2s; }
+        .modal-close:hover { color: #333; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; color: #333; font-weight: bold; font-size: 14px; }
+        .form-group input, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: Arial, sans-serif; font-size: 14px; transition: border-color 0.2s; }
+        .form-group textarea { resize: vertical; min-height: 100px; }
+        .form-group input:focus, .form-group textarea:focus { outline: none; border-color: #007bff; box-shadow: 0 0 5px rgba(0, 123, 255, 0.2); }
+        .form-group small { display: block; margin-top: 5px; color: #666; font-size: 12px; }
+        .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 30px; border-top: 1px solid #eee; padding-top: 15px; }
+        .modal-footer button { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; transition: background-color 0.2s; }
+        .btn-cancel { background: #6c757d; color: white; }
+        .btn-cancel:hover { background: #5a6268; }
+        .btn-submit { background: #007bff; color: white; }
+        .btn-submit:hover { background: #0056b3; }
+        .btn-submit:disabled { background: #ccc; cursor: not-allowed; }
     </style>
 </head>
 <body>
     <div class="navbar">
         <h1>Task Queue System</h1>
         <div>
-            <a href="/dashboard">Dashboard</a>
-            <a href="/tasks">Tasks</a>
             <a href="/logout">Logout</a>
         </div>
     </div>
 
     <div class="container">
+        <div id="alertBox" class="alert"></div>
+
         <div class="header">
             <h2>Dashboard</h2>
-            <a href="/tasks/new" class="btn">New Task</a>
+            <button onclick="openTaskModal()" class="btn">New Task</button>
         </div>
 
-        <div class="stats">
+        <div class="stats" id="statsContainer">
             <div class="stat-card">
                 <h3>Total Tasks</h3>
-                <div class="number">{{.TotalTasks}}</div>
+                <div class="number" id="totalTasks">-</div>
             </div>
             <div class="stat-card">
                 <h3>Pending</h3>
-                <div class="number">{{.PendingTasks}}</div>
+                <div class="number" id="pendingTasks">-</div>
             </div>
             <div class="stat-card">
                 <h3>Running</h3>
-                <div class="number">{{.RunningTasks}}</div>
+                <div class="number" id="runningTasks">-</div>
             </div>
             <div class="stat-card">
                 <h3>Completed</h3>
-                <div class="number">{{.CompletedTasks}}</div>
+                <div class="number" id="completedTasks">-</div>
             </div>
         </div>
 
         <div class="tasks-section">
-            <h3>Recent Tasks</h3>
-            {{if .Tasks}}
-                {{range .Tasks}}
-                <div class="task-item">
-                    <div class="task-info">
-                        <h4>{{.Title}}</h4>
-                        <p>{{.Description}}</p>
-                    </div>
-                    <span class="task-status status-{{.Status}}">{{.Status}}</span>
-                    <div class="task-actions">
-                        <a href="/tasks/{{.ID}}" class="btn-small">View</a>
-                        {{if eq .Status "pending"}}
-                        <button class="btn-small-danger" onclick="retryTask('{{.ID}}')">Retry</button>
-                        {{end}}
-                    </div>
+            <h3>
+                Recent Tasks
+                <span class="refresh-indicator">Auto-refreshing every 0.5s</span>
+            </h3>
+            <div id="tasksContainer">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading tasks...</p>
                 </div>
-                {{end}}
-            {{else}}
-                <div class="no-tasks">
-                    <p>No tasks yet. <a href="/tasks/new">Create one</a></p>
-                </div>
-            {{end}}
+            </div>
         </div>
     </div>
 
-    <script>
-        function retryTask(taskId) {
-            if (confirm('Are you sure you want to retry this task?')) {
-                fetch(`/api/tasks/${taskId}/retry`, { method: 'POST' })
-                    .then(response => {
-                        if (response.ok) {
-                            alert('Task retry initiated');
-                            location.reload();
-                        } else {
-                            alert('Failed to retry task');
-                        }
+    <div id="taskModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Create New Task</h2>
+                <button class="modal-close" onclick="closeTaskModal()">&times;</button>
+            </div>
+            <form id="taskForm">
+                <div class="form-group">
+                    <label for="taskName">Task Name *</label>
+                    <input type="text" id="taskName" name="name" required placeholder="Enter task name (min 8 characters)">
+                    <small>Must be at least 8 characters long</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="taskPayload">Payload</label>
+                    <textarea id="taskPayload" name="payload" placeholder="Enter task payload (JSON format recommended)"></textarea>
+                    <small>Optional JSON data or any string data</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="taskRunAt">Run At *</label>
+                    <input type="datetime-local" id="taskRunAt" name="runAt" required>
+                    <small>When should this task run?</small>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" onclick="closeTaskModal()">Cancel</button>
+                    <button type="submit" class="btn-submit">Create Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+       <script>
+        let refreshInterval;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Page loaded, initializing dashboard...');
+            setDefaultRunTime();
+            fetchTasks();
+            startAutoRefresh();
+        });
+
+        function startAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+            refreshInterval = setInterval(() => {
+                fetchTasks();
+            }, 1000); 
+        }
+
+        window.addEventListener('beforeunload', function() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+        });
+
+     function setDefaultRunTime() {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        const localDateTime = now.toISOString().slice(0, 16);
+        const dateInput = document.getElementById('taskRunAt');
+        if (dateInput) {
+        dateInput.value = localDateTime;
+        dateInput.min = localDateTime;
+        }
+}
+
+        function fetchTasks() {
+            fetch('/api/tasks', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error('Failed to fetch tasks');
+                }
+            })
+            .then(data => {
+                const tasksList = data.tasks || [];
+                renderTasks(tasksList);
+                calculateStats(tasksList);
+            })
+            .catch(error => {
+                console.error('Fetch error:', error);
+            });
+        }
+
+        function renderTasks(tasks) {
+            const container = document.getElementById('tasksContainer');
+            if (!container) return;
+            
+            if (!tasks || tasks.length === 0) {
+                container.innerHTML = '<div class="no-tasks"><p>No tasks yet. <a onclick="openTaskModal()">Create one</a></p></div>';
+                return;
+            }
+
+            let html = '';
+            tasks.forEach((task) => {
+                const taskId = task.ID || task.id || 'unknown';
+                const taskName = task.Name || task.name || 'Unnamed Task';
+                const taskState = task.State || task.state || 'unknown';
+                const taskPayload = task.Payload || task.payload || '';
+                const taskRetries = task.Retries || task.retries || 0;
+                const taskMaxRetries = task.MaxRetries || task.max_retries || 0;
+                
+                const retryBtn = ((taskState === 'retry' && taskRetries < taskMaxRetries) || taskState === 'failed' || taskState === 'dead' || taskState === 'canceled') 
+                    ? `<button class="btn-small-danger" onclick="retryTask('${taskId}', this)">Retry</button>` 
+                    : '';
+                
+                const cancelBtn = (taskState === 'leased' || taskState === 'pending' || taskState === 'ready') 
+                    ? `<button class="btn-small-cancel" onclick="cancelTask('${taskId}', this)">Cancel</button>` 
+                    : '';
+                
+                let displayPayload = 'No payload';
+                if (taskPayload && taskPayload !== 'null') {
+                    displayPayload = typeof taskPayload === 'object' ? JSON.stringify(taskPayload) : taskPayload;
+                    displayPayload = displayPayload.substring(0, 100);
+                }
+                
+                html += `
+                    <div class="task-item">
+                        <div class="task-info">
+                            <h4>${escapeHtml(taskName)}</h4>
+                            <p><small>${escapeHtml(displayPayload)}</small></p>
+                        </div>
+                        <span class="task-status status-${taskState}">${taskState}</span>
+                        <div class="task-actions">
+                            <a href="/tasks/${taskId}" class="btn-small">View</a>
+                            ${retryBtn}
+                            ${cancelBtn}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        function calculateStats(tasks) {
+            if (!tasks) tasks = [];
+            
+            const stats = {
+                total: tasks.length,
+                pending: tasks.filter(t => (t.State || t.state) === 'pending').length,
+                running: tasks.filter(t => (t.State || t.state) === 'leased').length,
+                completed: tasks.filter(t => (t.State || t.state) === 'completed').length
+            };
+
+            const totalTasksEl = document.getElementById('totalTasks');
+            const pendingTasksEl = document.getElementById('pendingTasks');
+            const runningTasksEl = document.getElementById('runningTasks');
+            const completedTasksEl = document.getElementById('completedTasks');
+
+            if (totalTasksEl) totalTasksEl.textContent = stats.total;
+            if (pendingTasksEl) pendingTasksEl.textContent = stats.pending;
+            if (runningTasksEl) runningTasksEl.textContent = stats.running;
+            if (completedTasksEl) completedTasksEl.textContent = stats.completed;
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function openTaskModal() {
+            document.getElementById('taskModal').classList.add('show');
+        }
+
+        function closeTaskModal() {
+            document.getElementById('taskModal').classList.remove('show');
+            document.getElementById('taskForm').reset();
+            setDefaultRunTime();
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('taskModal');
+            if (event.target === modal) {
+                closeTaskModal();
+            }
+        }
+
+        function showAlert(message, type) {
+            const alertBox = document.getElementById('alertBox');
+            alertBox.textContent = message;
+            alertBox.className = `alert ${type}`;
+            setTimeout(() => {
+                alertBox.className = 'alert';
+            }, 4000);
+        }
+
+        function parsePayload(payloadString) {
+            if (!payloadString || !payloadString.trim()) {
+                return null;
+            }
+            try {
+                return JSON.parse(payloadString);
+            } catch (e) {
+                return payloadString;
+            }
+        }
+
+        document.getElementById('taskForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const name = document.getElementById('taskName').value.trim();
+            const payloadString = document.getElementById('taskPayload').value.trim();
+            const runAtString = document.getElementById('taskRunAt').value;
+
+            if (name.length < 8) {
+                showAlert('Task name must be at least 8 characters long', 'error');
+                return;
+            }
+
+            if (!runAtString) {
+                showAlert('Run At time is required', 'error');
+                return;
+            }
+
+            const submitBtn = document.querySelector('.btn-submit');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Creating...';
+
+            const payload = parsePayload(payloadString);
+            
+            const runAt = new Date(runAtString).toISOString();
+
+            const taskData = {
+                name: name,
+                payload: payload,
+                run_at: runAt
+            };
+
+            fetch('/api/tasks', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(taskData)
+            })
+            .then(response => {
+                if (response.ok) {
+                    showAlert('Task created successfully', 'success');
+                    closeTaskModal();
+                    fetchTasks();
+                } else {
+                    return response.json().then(data => {
+                        throw new Error(data.error || 'Failed to create task');
                     });
+                }
+            })
+            .catch(error => {
+                showAlert(`Error: ${error.message}`, 'error');
+            })
+            .finally(() => {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Create Task';
+            });
+        });
+
+        function retryTask(taskId, button) {
+            if (confirm('Are you sure you want to retry this task?')) {
+                button.disabled = true;
+                button.textContent = 'Retrying...';
+                
+                fetch(`/api/tasks/${taskId}/retry`, { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        showAlert('Task retry initiated successfully', 'success');
+                        fetchTasks();
+                    } else {
+                        return response.json().then(data => { throw new Error(data.error); });
+                    }
+                })
+                .catch(error => {
+                    showAlert(`Error: ${error.message}`, 'error');
+                })
+                .finally(() => {
+                    button.disabled = false;
+                    button.textContent = 'Retry';
+                });
+            }
+        }
+
+        function cancelTask(taskId, button) {
+            if (confirm('Are you sure you want to cancel this task?')) {
+                button.disabled = true;
+                button.textContent = 'Cancelling...';
+                
+                fetch(`/api/tasks/${taskId}/cancel`, { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        showAlert('Task canceled successfully', 'success');
+                        fetchTasks();
+                    } else {
+                        return response.json().then(data => { throw new Error(data.error); });
+                    }
+                })
+                .catch(error => {
+                    showAlert(`Error: ${error.message}`, 'error');
+                })
+                .finally(() => {
+                    button.disabled = false;
+                    button.textContent = 'Cancel';
+                });
             }
         }
     </script>
 </body>
 </html>
-
 {{end}}

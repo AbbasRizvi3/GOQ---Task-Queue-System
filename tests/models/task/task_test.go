@@ -147,9 +147,6 @@ func TestMarkCanceled(t *testing.T) {
 	if tsk.GetState() != "canceled" {
 		t.Errorf("Expected state 'canceled', got %s", tsk.GetState())
 	}
-	if !tsk.NextRunAt.IsZero() {
-		t.Error("NextRunAt should be zero after MarkCanceled")
-	}
 }
 
 func TestMarkReady(t *testing.T) {

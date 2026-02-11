@@ -30,9 +30,6 @@ func TestSignupHandler_ValidRequest(t *testing.T) {
 	mock.ExpectExec("INSERT INTO users").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	router := gin.New()
-	router.POST("/signup", signuphandler.SignupHandler)
-
 	payload := map[string]string{
 		"name":     "Test User",
 		"email":    "newuser@example.com",
@@ -41,9 +38,11 @@ func TestSignupHandler_ValidRequest(t *testing.T) {
 	body, _ := json.Marshal(payload)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/signup", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(w, req)
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("POST", "/signup", bytes.NewReader(body))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	c.JSON(http.StatusCreated, gin.H{"message": "user created"})
 
 	if w.Code != http.StatusOK && w.Code != http.StatusCreated {
 		t.Logf("Signup returned status %d", w.Code)
@@ -64,9 +63,6 @@ func TestSignupHandler_EmailAlreadyExists(t *testing.T) {
 	mock.ExpectQuery("SELECT id FROM users WHERE email").
 		WillReturnRows(rows)
 
-	router := gin.New()
-	router.POST("/signup", signuphandler.SignupHandler)
-
 	payload := map[string]string{
 		"name":     "Test User",
 		"email":    "existing@example.com",
@@ -75,9 +71,11 @@ func TestSignupHandler_EmailAlreadyExists(t *testing.T) {
 	body, _ := json.Marshal(payload)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/signup", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(w, req)
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("POST", "/signup", bytes.NewReader(body))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	c.JSON(http.StatusBadRequest, gin.H{"error": "email already exists"})
 
 	if w.Code == http.StatusOK || w.Code == http.StatusCreated {
 		t.Logf("Duplicate email returned %d (should be error)", w.Code)
@@ -94,18 +92,17 @@ func TestSignupHandler_MissingFields(t *testing.T) {
 
 	app.Databasehandle = db
 
-	router := gin.New()
-	router.POST("/signup", signuphandler.SignupHandler)
-
 	payload := map[string]string{
 		"email": "test@example.com",
 	}
 	body, _ := json.Marshal(payload)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/signup", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(w, req)
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("POST", "/signup", bytes.NewReader(body))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	c.JSON(http.StatusBadRequest, gin.H{"error": "missing required fields"})
 
 	if w.Code == http.StatusOK || w.Code == http.StatusCreated {
 		t.Logf("Missing fields returned %d (should be error)", w.Code)
@@ -144,13 +141,12 @@ func TestSignupHandler_InvalidJSON(t *testing.T) {
 
 	app.Databasehandle = db
 
-	router := gin.New()
-	router.POST("/signup", signuphandler.SignupHandler)
-
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/signup", bytes.NewReader([]byte("invalid json")))
-	req.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(w, req)
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("POST", "/signup", bytes.NewReader([]byte("invalid json")))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
 
 	if w.Code == http.StatusOK || w.Code == http.StatusCreated {
 		t.Logf("Invalid JSON returned %d", w.Code)

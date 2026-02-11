@@ -1,0 +1,8 @@
+package auth
+
+type SignupRequest struct {
+	ID       int    `json:"id" binding:"required"`
+	Name     string `json:"username" binding:"required"`
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required,min=8"`
+}

@@ -1,110 +1,232 @@
-# GOQ — Asynchronous Task Queue System in Go
+# GOQ — Go-based Task Queue System
 
-## Overview
-
-GOQ is a self-hosted asynchronous task queue system written in Go.  
-This project is a simplified assignment implementation focusing on **concurrent task processing, worker pools, retries, and a simple REST API**.
-
-The system demonstrates core Go concepts including:
-
-- Goroutines & channels
-- Worker pools
-- Task queue management
-- Error handling and retries with backoff
-- Context-based cancellation
-- Simple in-memory task storage
-- REST API endpoints
+GOQ is a **task queue and scheduling system** built in Go, designed to support delayed execution, retries with backoff, persistence via PostgreSQL, and a human-friendly web dashboard for observability and control.
 
 ---
 
-## Features To Implement
+## 🚀 Features
 
-- **Task Queue (in-memory)**  
-  - Add tasks dynamically
-  - Tasks stored in memory slice or channel
+### Core
 
-- **Worker Pool**  
-  - Configurable number of workers
-  - Concurrent task execution
-  - Logging task status
+* Task scheduling with `run_at` (future execution)
+* Persistent task storage using **PostgreSQL**
+* Worker-based task processing
+* Automatic retries with retry count tracking
+* Task state management (`pending`, `ready`, `running`, `failed`, `completed`)
 
-- **Retries with Backoff**  
-  - Retry failed tasks with configurable delay
-  - Exponential backoff strategy
+### Backend
 
-- **REST API Endpoints**  
-  - `POST /tasks` → Submit a new task  
-  - `GET /tasks` → List all tasks  
-  - `GET /tasks/{id}` → Get task by ID  
+* REST APIs for task creation and management
+* SQL-backed store (PostgreSQL)
+* Authentication with **JWT + cookies**
+* Login & signup support
+* Dockerized setup for local development
 
-- **Logging**  
-  - Task execution logs with timestamp, status, and result
+### Web Dashboard (Phase 3)
 
-- **Testing**  
-  - Unit tests for task processing, queue operations, and worker pool
+* Server-Side Rendered (SSR) pages
+* Dashboard showing live system state
+* Task list and task detail pages
+* Live polling via JavaScript
+* Retry and cancel task controls
+* Task submission via UI
+* Safe HTML rendering
+
+### DevOps / CI
+
+* GitHub Actions CI workflow
+* Automated builds and tests
+* Structured project phases with incremental PRs
 
 ---
 
-## Project Structure
+## 🧱 Architecture Overview
 
 ```
+Client (Browser / API)
+        |
+        v
+     Go Backend (Gin)
+        |
+        v
+  PostgreSQL (Docker)
+        |
+        v
+   Workers (Goroutines)
+```
 
-goq/
-├─ cmd/
-│  ├─ goq-server/       # entry point for the API server
-├─ internal/
-│  ├─ app/              # dependency wiring
-│  ├─ queue/            # in-memory task queue
-│  ├─ worker/           # worker pool
-│  ├─ domain/           # task structs & interfaces
-│  ├─ server/           # REST API implementation
-├─ tasks.log            # sample task execution logs
-├─ go.mod
-├─ go.sum
-└─ README.md
+* **Scheduler** promotes tasks when `run_at <= now`
+* **Workers** consume ready tasks
+* **SQL store** ensures durability
+* **Dashboard** provides real-time visibility and control
 
 ---
 
-## Getting Started
+## 🛠 Tech Stack
+
+* **Language:** Go
+* **Web Framework:** Gin
+* **Database:** PostgreSQL
+* **Auth:** JWT + HTTP Cookies
+* **Frontend:** SSR (Go HTML templates) + Vanilla JS
+* **Containerization:** Docker & Docker Compose
+* **CI:** GitHub Actions
+
+---
+
+## 📦 Project Structure
+
+```
+GOQ/
+├── cmd/                # Application entry point
+├── internal/
+│   ├── auth/           # Auth logic (JWT, cookies)
+│   ├── handlers/       # HTTP handlers
+│   ├── scheduler/      # Task scheduling logic
+│   ├── worker/         # Task workers
+│   ├── store/          # SQL store (PostgreSQL)
+│   └── models/         # Domain models
+├── migrations/         # SQL migrations
+├── templates/          # SSR HTML templates
+├── static/             # JS/CSS assets
+├── docker-compose.yml
+└── README.md
+```
+
+---
+
+## 🐳 Running Locally (Docker)
 
 ### Prerequisites
 
-- Go 1.21+ installed
-- (Optional) Docker if you want to containerize
+* Docker
+* Docker Compose
 
-### Run Locally
-
-1. Clone the repository:
+### Start PostgreSQL
 
 ```bash
-git clone <your-repo-url>
-cd goq
-````
-
-2. Run the server:
-
-```bash
-go run cmd/goq-server/main.go
+sudo docker compose up
 ```
 
-3. Submit and list tasks via REST API:
+### Stop & Reset Database
 
 ```bash
-# Add a task
-curl -X POST http://localhost:8080/tasks -H "Content-Type: application/json" -d '{"name":"Task 1"}'
-
-# List tasks
-curl http://localhost:8080/tasks
+sudo docker compose down
+sudo rm -rf ./postgres_data
+sudo docker compose up
 ```
 
 ---
 
-## Testing
-
-Run all unit tests with:
+## ▶️ Running the Backend
 
 ```bash
-go test ./... -v -race
+go run cmd/main.go
+```
+
+Server starts on:
+
+```
+http://localhost:8000
 ```
 
 ---
+
+## 🌐 Web Dashboard Routes
+
+| Route              | Description     |
+| ------------       | --------------- |
+| `/api/dashboard`   | Dashboard       |
+| `/login`           | Login page      |
+| `/signup`          | Signup page     |
+| `/api/tasks`       | Task list       |
+| `/api/tasks/:id`   | Task detail     |
+
+---
+
+## 📡 API Example
+
+### Create a Task
+
+```http
+POST /tasks
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "example-task",
+  "payload": "hello world",
+  "run_at": "2026-02-05T14:30:00Z"
+}
+```
+
+> `run_at` must be in **RFC3339 / ISO-8601 UTC format**
+
+---
+
+## ⏰ Scheduling Format
+
+GOQ uses **UTC timestamps**:
+
+```
+YYYY-MM-DDTHH:MM:SSZ
+```
+
+Example:
+
+```
+2026-02-05T14:30:00Z
+```
+
+---
+
+## 🔁 Retry Behavior
+
+* Tasks automatically retry on failure
+* Retry count is tracked per task
+* Admins can manually retry or cancel tasks from the dashboard
+
+---
+
+## 🧪 Testing & CI
+
+* Unit tests included for core components
+* GitHub Actions runs tests on every PR
+* CI ensures build and test stability before merge
+
+---
+
+## 📌 Project Phases
+
+* **Phase 1:** In-memory queue & scheduler
+* **Phase 2:** SQL store, auth, Docker, CI
+* **Phase 3:** Web dashboard & UX (SSR)
+* **Phase 4 (Planned):** Observability, metrics, scaling
+
+---
+
+## 📈 Future Improvements
+
+* Role-based access (admin vs user)
+* WebSocket-based live updates
+* Task prioritization
+* Distributed workers
+* Metrics & tracing (Prometheus)
+
+---
+
+## 📄 License
+
+MIT License
+
+---
+
+If you want, I can also:
+
+* Make this **shorter for GitHub**
+* Convert it into an **assignment submission README**
+* Add **screenshots section**
+* Add **API documentation section**
+
+Just tell me 👍

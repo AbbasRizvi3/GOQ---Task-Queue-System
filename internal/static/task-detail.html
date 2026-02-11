@@ -1,0 +1,479 @@
+{{define "task-detail.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Task Details - Task Queue System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+        }
+        .navbar {
+            background: #333;
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .navbar h1 {
+            font-size: 24px;
+        }
+        .navbar a {
+            color: white;
+            text-decoration: none;
+            margin-left: 20px;
+            cursor: pointer;
+        }
+        .navbar a:hover {
+            color: #007bff;
+        }
+        .container {
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        .back-btn {
+            display: inline-block;
+            margin-bottom: 20px;
+            padding: 10px 20px;
+            background: #6c757d;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            cursor: pointer;
+            border: none;
+            transition: background-color 0.2s;
+        }
+        .back-btn:hover {
+            background: #5a6268;
+        }
+        .refresh-info {
+            display: inline-block;
+            margin-left: 20px;
+            font-size: 12px;
+            color: #666;
+        }
+        .detail-card {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 20px;
+        }
+        .detail-header h1 {
+            color: #333;
+            font-size: 28px;
+        }
+        .task-status {
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+            text-transform: capitalize;
+        }
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .status-running {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        .status-completed {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status-failed {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status-dead {
+            background: #d9534f;
+            color: white;
+        }
+        .status-retry {
+            background: #ffc107;
+            color: #333;
+        }
+        .status-canceled {
+            background: #6c757d;
+            color: white;
+        }
+        .status-leased {
+            background: #17a2b8;
+            color: white;
+        }
+        .detail-row {
+            display: flex;
+            padding: 15px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        .detail-label {
+            font-weight: bold;
+            color: #333;
+            width: 150px;
+            min-width: 150px;
+        }
+        .detail-value {
+            flex: 1;
+            color: #666;
+            word-break: break-word;
+        }
+        .payload-box {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 4px;
+            border-left: 3px solid #007bff;
+            margin-top: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        .btn-warning {
+            background: #ffc107;
+            color: #333;
+        }
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .alert {
+            padding: 12px 20px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .alert.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+        .alert.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #007bff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h1>Task Queue System</h1>
+        <div>
+            <a href="/">Dashboard</a>
+            <a href="/logout">Logout</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <a href="/api/dashboard" class="back-btn">← Back to Dashboard</a>
+            <span class="refresh-info">Auto-refreshing every 0.5s</span>
+        </div>
+        <div id="alertBox" class="alert"></div>
+
+        <div id="taskContainer">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Loading task details...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let refreshInterval;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Task detail page loaded');
+            fetchTaskDetail();
+            startAutoRefresh();
+        });
+
+        function startAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+            
+            refreshInterval = setInterval(() => {
+                console.log('Auto-refreshing task details...');
+                fetchTaskDetail();
+            }, 500); 
+            
+            console.log('Auto-refresh started for task details');
+        }
+
+        window.addEventListener('beforeunload', function() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+        });
+
+        function fetchTaskDetail() {
+            const taskId = window.location.pathname.split('/').pop();
+            
+            fetch(`/api/tasks/${taskId}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-cache'
+                },
+                cache: 'no-store'
+            })
+            .then(response => {
+                if (response.status === 401 || response.status === 403) {
+                    window.location.href = '/login';
+                    return;
+                }
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+            })
+            .then(data => {
+                if (data && data.task) {
+                    renderTaskDetail(data.task);
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching task:', error);
+            });
+        }
+
+        function renderTaskDetail(task) {
+            const container = document.getElementById('taskContainer');
+            const payload = task.payload && task.payload !== 'No payload' ? task.payload : 'No payload provided';
+            const taskRetries = task.Retries || task.retries || 0;
+            const taskMaxRetries = task.MaxRetries || task.max_retries || 0;
+
+            const retryBtn = ((task.state === 'retry' && taskRetries < taskMaxRetries) || task.state === 'failed' || task.state === 'dead' || task.state === 'canceled') 
+                ? `<button class="btn btn-warning" onclick="retryTask('${task.id}', this)">Retry Task</button>` 
+                : '';
+            
+            const cancelBtn = task.state === 'leased' || task.state === 'pending' 
+                ? `<button class="btn btn-danger" onclick="cancelTask('${task.id}', this)">Cancel Task</button>` 
+                : '';
+
+            const html = `
+                <div class="detail-card">
+                    <div class="detail-header">
+                        <h1>${escapeHtml(task.name)}</h1>
+                        <span class="task-status status-${task.state}">${task.state}</span>
+                    </div>
+
+                    <div class="detail-row">
+                        <div class="detail-label">Task ID:</div>
+                        <div class="detail-value">${escapeHtml(task.id)}</div>
+                    </div>
+
+                    <div class="detail-row">
+                        <div class="detail-label">State:</div>
+                        <div class="detail-value">${escapeHtml(task.state)}</div>
+                    </div>
+
+                    <div class="detail-row">
+                        <div class="detail-label">Created At:</div>
+                        <div class="detail-value">${formatDate(task.created_at)}</div>
+                    </div>
+
+                    <div class="detail-row">
+                        <div class="detail-label">Scheduled Run At:</div>
+                        <div class="detail-value">${formatDate(task.run_at)}</div>
+                    </div>
+
+                    <div class="detail-row">
+                        <div class="detail-label">Next Run At:</div>
+                        <div class="detail-value">${formatDate(task.next_run_at)}</div>
+                    </div>
+
+                    <div class="detail-row">
+                        <div class="detail-label">Retries:</div>
+                        <div class="detail-value">${task.retries}/${task.max_retries}</div>
+                    </div>
+
+                    <div class="detail-row">
+                        <div class="detail-label">Payload:</div>
+                        <div class="detail-value">
+                            <div class="payload-box">${escapeHtml(payload)}</div>
+                        </div>
+                    </div>
+
+                    <div class="button-group">
+                        ${retryBtn}
+                        ${cancelBtn}
+                    </div>
+                </div>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            return date.toLocaleString();
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function showAlert(message, type) {
+            const alertBox = document.getElementById('alertBox');
+            alertBox.textContent = message;
+            alertBox.className = `alert ${type}`;
+            setTimeout(() => {
+                alertBox.className = 'alert';
+            }, 4000);
+        }
+
+        function retryTask(taskId, button) {
+            if (confirm('Are you sure you want to retry this task?')) {
+                button.disabled = true;
+                button.textContent = 'Retrying...';
+                
+                fetch(`/api/tasks/${taskId}/retry`, { 
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        showAlert('Task retry initiated successfully', 'success');
+                    } else {
+                        return response.json().then(data => {
+                            throw new Error(data.error || 'Failed to retry task');
+                        });
+                    }
+                })
+                .catch(error => {
+                    showAlert(`Error: ${error.message}`, 'error');
+                    button.disabled = false;
+                    button.textContent = 'Retry Task';
+                });
+            }
+        }
+
+        function cancelTask(taskId, button) {
+            if (confirm('Are you sure you want to cancel this task?')) {
+                button.disabled = true;
+                button.textContent = 'Cancelling...';
+                
+                fetch(`/api/tasks/${taskId}/cancel`, { 
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        showAlert('Task canceled successfully', 'success');
+                    } else {
+                        return response.json().then(data => {
+                            throw new Error(data.error || 'Failed to cancel task');
+                        });
+                    }
+                })
+                .catch(error => {
+                    showAlert(`Error: ${error.message}`, 'error');
+                    button.disabled = false;
+                    button.textContent = 'Cancel Task';
+                });
+            }
+        }
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted) {
+                fetch('/api/tasks', { method: 'GET' })
+                    .then(response => {
+                        if (response.status === 401 || response.status === 403) {
+                            window.location.href = '/login';
+                        }
+                    })
+                    .catch(() => {
+                        window.location.href = '/login';
+                    });
+            }
+        });
+    </script>
+</body>
+</html>
+
+{{end}}

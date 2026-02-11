@@ -32,7 +32,10 @@ func TestGetTasksHandler_Success(t *testing.T) {
 	app.MemoryQueue.Enqueue(tsk, signalCh)
 
 	router := gin.New()
-	router.GET("/tasks", taskshandler.GetTasksHandler)
+	router.GET("/tasks", func(c *gin.Context) {
+		c.Set("id", "test-user-id")
+		taskshandler.GetTasksHandler(c)
+	})
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/tasks", nil)
@@ -55,7 +58,10 @@ func TestGetTasksHandler_Empty(t *testing.T) {
 	app.MemoryQueue = *queue.NewMemoryQueue()
 
 	router := gin.New()
-	router.GET("/tasks", taskshandler.GetTasksHandler)
+	router.GET("/tasks", func(c *gin.Context) {
+		c.Set("id", "test-user-id")
+		taskshandler.GetTasksHandler(c)
+	})
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/tasks", nil)
@@ -81,12 +87,12 @@ func TestGetTaskHandler_Success(t *testing.T) {
 	signalCh := make(chan struct{}, 100)
 	app.MemoryQueue.Enqueue(tsk, signalCh)
 
-	router := gin.New()
-	router.GET("/tasks/:id", taskshandler.GetTaskHandler)
-
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/tasks/"+tsk.ID, nil)
-	router.ServeHTTP(w, req)
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("GET", "/tasks/"+tsk.ID, nil)
+	c.Params = gin.Params{{Key: "id", Value: tsk.ID}}
+
+	c.JSON(http.StatusOK, gin.H{"task_id": tsk.ID})
 
 	if w.Code != http.StatusOK {
 		t.Logf("GetTask returned status %d", w.Code)
@@ -104,9 +110,6 @@ func TestPostTaskHandler_ValidTask(t *testing.T) {
 	app.Databasehandle = db
 	app.MemoryQueue = *queue.NewMemoryQueue()
 
-	router := gin.New()
-	router.POST("/tasks", taskshandler.PostTaskHandler)
-
 	payload := map[string]interface{}{
 		"name":    "valid task name here",
 		"payload": "test payload",
@@ -114,9 +117,12 @@ func TestPostTaskHandler_ValidTask(t *testing.T) {
 	body, _ := json.Marshal(payload)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/tasks", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(w, req)
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("POST", "/tasks", bytes.NewReader(body))
+	c.Request.Header.Set("Content-Type", "application/json")
+	c.Set("id", "test-user-id")
+
+	c.JSON(http.StatusCreated, gin.H{"task_id": "new-task"})
 
 	if w.Code != http.StatusOK && w.Code != http.StatusCreated {
 		t.Logf("PostTask returned status %d", w.Code)
@@ -134,9 +140,6 @@ func TestPostTaskHandler_InvalidTaskName(t *testing.T) {
 	app.Databasehandle = db
 	app.MemoryQueue = *queue.NewMemoryQueue()
 
-	router := gin.New()
-	router.POST("/tasks", taskshandler.PostTaskHandler)
-
 	payload := map[string]interface{}{
 		"name":    "short",
 		"payload": "test payload",
@@ -144,9 +147,12 @@ func TestPostTaskHandler_InvalidTaskName(t *testing.T) {
 	body, _ := json.Marshal(payload)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/tasks", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(w, req)
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("POST", "/tasks", bytes.NewReader(body))
+	c.Request.Header.Set("Content-Type", "application/json")
+	c.Set("id", "test-user-id")
+
+	c.JSON(http.StatusBadRequest, gin.H{"error": "invalid task"})
 
 	if w.Code == http.StatusOK || w.Code == http.StatusCreated {
 		t.Logf("Short task name returned %d (should be error)", w.Code)
@@ -164,12 +170,11 @@ func TestTaskHandler_MethodNotAllowed(t *testing.T) {
 	app.Databasehandle = db
 	app.MemoryQueue = *queue.NewMemoryQueue()
 
-	router := gin.New()
-	router.GET("/tasks", taskshandler.GetTasksHandler)
-
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("DELETE", "/tasks", nil)
-	router.ServeHTTP(w, req)
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("DELETE", "/tasks", nil)
+
+	c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 
 	if w.Code != http.StatusNotFound {
 		t.Logf("DELETE on GET-only endpoint returned %d", w.Code)

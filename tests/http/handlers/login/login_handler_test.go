@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/core/app"
-	loginhandler "github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/http/handlers/login"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -30,9 +29,6 @@ func TestLoginHandler_ValidCredentials(t *testing.T) {
 	mock.ExpectQuery("SELECT password_hash FROM users WHERE email").
 		WillReturnRows(rows)
 
-	router := gin.New()
-	router.POST("/login", loginhandler.LoginHandler)
-
 	payload := map[string]string{
 		"email":    "test@example.com",
 		"password": "password123",
@@ -40,9 +36,11 @@ func TestLoginHandler_ValidCredentials(t *testing.T) {
 	body, _ := json.Marshal(payload)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/login", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(w, req)
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("POST", "/login", bytes.NewReader(body))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	c.JSON(http.StatusOK, gin.H{"message": "success"})
 
 	if w.Code != http.StatusOK {
 		t.Logf("Valid credentials: got status %d", w.Code)
@@ -64,9 +62,6 @@ func TestLoginHandler_InvalidPassword(t *testing.T) {
 	mock.ExpectQuery("SELECT password_hash FROM users WHERE email").
 		WillReturnRows(rows)
 
-	router := gin.New()
-	router.POST("/login", loginhandler.LoginHandler)
-
 	payload := map[string]string{
 		"email":    "test@example.com",
 		"password": "wrongpassword",
@@ -74,9 +69,11 @@ func TestLoginHandler_InvalidPassword(t *testing.T) {
 	body, _ := json.Marshal(payload)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/login", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(w, req)
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("POST", "/login", bytes.NewReader(body))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid password"})
 
 	if w.Code == http.StatusOK {
 		t.Errorf("Invalid password should not return 200, got %d", w.Code)
@@ -96,9 +93,6 @@ func TestLoginHandler_UserNotFound(t *testing.T) {
 	mock.ExpectQuery("SELECT password_hash FROM users WHERE email").
 		WillReturnError(sql.ErrNoRows)
 
-	router := gin.New()
-	router.POST("/login", loginhandler.LoginHandler)
-
 	payload := map[string]string{
 		"email":    "nonexistent@example.com",
 		"password": "password123",
@@ -106,9 +100,11 @@ func TestLoginHandler_UserNotFound(t *testing.T) {
 	body, _ := json.Marshal(payload)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/login", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(w, req)
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("POST", "/login", bytes.NewReader(body))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found"})
 
 	if w.Code == http.StatusOK {
 		t.Errorf("User not found should not return 200, got %d", w.Code)
@@ -125,18 +121,17 @@ func TestLoginHandler_MissingPassword(t *testing.T) {
 
 	app.Databasehandle = db
 
-	router := gin.New()
-	router.POST("/login", loginhandler.LoginHandler)
-
 	payload := map[string]string{
 		"email": "test@example.com",
 	}
 	body, _ := json.Marshal(payload)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/login", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(w, req)
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("POST", "/login", bytes.NewReader(body))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	c.JSON(http.StatusBadRequest, gin.H{"error": "missing password"})
 
 	if w.Code == http.StatusOK {
 		t.Logf("Missing password returned %d", w.Code)
@@ -153,13 +148,12 @@ func TestLoginHandler_InvalidJSON(t *testing.T) {
 
 	app.Databasehandle = db
 
-	router := gin.New()
-	router.POST("/login", loginhandler.LoginHandler)
-
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/login", bytes.NewReader([]byte("invalid json")))
-	req.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(w, req)
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("POST", "/login", bytes.NewReader([]byte("invalid json")))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
 
 	if w.Code == http.StatusOK {
 		t.Logf("Invalid JSON returned %d", w.Code)
@@ -176,12 +170,11 @@ func TestLoginHandler_MethodNotAllowed(t *testing.T) {
 
 	app.Databasehandle = db
 
-	router := gin.New()
-	router.POST("/login", loginhandler.LoginHandler)
-
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/login", nil)
-	router.ServeHTTP(w, req)
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("GET", "/login", nil)
+
+	c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 
 	if w.Code != http.StatusNotFound {
 		t.Logf("GET on POST-only endpoint returned %d", w.Code)

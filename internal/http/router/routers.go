@@ -6,6 +6,7 @@ import (
 
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/http/handlers/dashboard"
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/http/handlers/healthz"
+	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/http/handlers/landing"
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/http/handlers/login"
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/http/handlers/logout"
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/http/handlers/signup"
@@ -34,6 +35,7 @@ func SetUpRoutes() *gin.Engine {
 	router.GET("/signup", signup.SignupPageHandler)
 	router.POST("/signup", signup.SignupHandler)
 	router.GET("/logout", logout.LogoutHandler)
+	router.GET("/", landing.LandingPageHandler)
 	group2 := router.Group("/", auth.AuthMiddleware(), cache.NoCacheMiddleware())
 	group2.GET("/tasks/:id", tasks.GetTaskDetailHandler)
 

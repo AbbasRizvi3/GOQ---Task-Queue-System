@@ -9,8 +9,8 @@ import (
 )
 
 func SetupDatabase() (*sql.DB, error) {
-	host := os.Getenv("HOST")
-	port := os.Getenv("PORT")
+	host := os.Getenv("DB_HOST")
+	port := os.Getenv("DB_PORT")
 	user := os.Getenv("POSTGRES_USER")
 	password := os.Getenv("POSTGRES_PASSWORD")
 	dbname := os.Getenv("POSTGRES_DB")

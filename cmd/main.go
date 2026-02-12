@@ -17,14 +17,12 @@ import (
 var router *gin.Engine
 
 func Load() error {
-	return godotenv.Load("../.env")
+	godotenv.Load(".env")
+	return nil
 }
 func main() {
-	err := Load()
-	if err != nil {
-		panic("Error loading .env file")
-	}
-
+	Load()
+	var err error
 	app.Databasehandle, err = db.SetupDatabase()
 	if err != nil {
 		fmt.Printf("Database setup error: %v\n", err)

@@ -7,5 +7,6 @@ FROM alpine:latest
 WORKDIR /app
 COPY --from=builder /app/main .
 COPY --from=builder /app/internal/static ./internal/static
+
 EXPOSE 8000
 CMD ["./main"]

@@ -2,38 +2,12 @@ package login
 
 import (
 	"net/http"
-	"os"
-	"time"
 
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/core/app"
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/models/auth"
+	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/utils/authentication"
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
-	"golang.org/x/crypto/bcrypt"
 )
-
-var secretKey = os.Getenv("JWT_SECRET")
-var tokenExpiryHours = time.Hour * 24
-
-func createToken(email string, id string) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256,
-		jwt.MapClaims{
-			"email": email,
-			"id":    id,
-			"exp":   time.Now().Add(tokenExpiryHours).Unix(),
-		})
-
-	tokenString, err := token.SignedString([]byte(secretKey))
-	if err != nil {
-		return "", err
-	}
-	return tokenString, nil
-}
-
-func checkPasswordHash(password, hash string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
-	return err == nil
-}
 
 func LoginPageHandler(c *gin.Context) {
 	if c.Request.Method == "GET" {
@@ -70,7 +44,7 @@ func LoginHandler(c *gin.Context) {
 			})
 			return
 		}
-		if !checkPasswordHash(req.Password, storedHash) {
+		if !authentication.CheckPasswordHash(req.Password, storedHash) {
 			c.HTML(http.StatusUnauthorized, "login.html", gin.H{
 				"Error": "invalid email or password",
 				"Email": req.Email,
@@ -85,7 +59,7 @@ func LoginHandler(c *gin.Context) {
 			})
 			return
 		}
-		token, err := createToken(req.Email, req.ID)
+		token, err := authentication.CreateToken(req.Email, req.ID)
 		if err != nil {
 			c.HTML(http.StatusInternalServerError, "login.html", gin.H{
 				"Error": "failed to create token",

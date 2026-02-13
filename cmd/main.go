@@ -17,7 +17,7 @@ import (
 var router *gin.Engine
 
 func Load() error {
-	godotenv.Load(".env")
+	_ = godotenv.Load()
 	return nil
 }
 func main() {

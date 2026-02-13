@@ -5,6 +5,7 @@ import (
 
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/core/app"
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/models/auth"
+	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/utils/authentication"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -66,7 +67,12 @@ func SignupHandler(c *gin.Context) {
 			})
 			return
 		}
-		_, err = app.Databasehandle.Exec("INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3)", req.Name, req.Email, hashedPassword)
+		var newUserID string
+		err = app.Databasehandle.QueryRow(
+			"INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id",
+			req.Name, req.Email, hashedPassword,
+		).Scan(&newUserID)
+
 		if err != nil {
 			c.HTML(http.StatusInternalServerError, "signup.html", gin.H{
 				"Error": "Failed to create user",
@@ -75,11 +81,21 @@ func SignupHandler(c *gin.Context) {
 			})
 			return
 		}
-		c.HTML(http.StatusOK, "signup.html", gin.H{
-			"Success": "Account created successfully! Redirecting to login...",
-			"Name":    "",
-			"Email":   "",
-		})
+
+		token, err := authentication.CreateToken(req.Email, newUserID)
+		if err != nil {
+			c.HTML(http.StatusInternalServerError, "signup.html", gin.H{
+				"Error": "Account created, but auto-login failed. Please try logging in manually.",
+				"Name":  "",
+				"Email": "",
+			})
+			return
+		}
+
+		c.SetCookie("auth_token", token, 3600*24, "/", "", false, true)
+
+		c.Redirect(http.StatusSeeOther, "/api/dashboard")
+
 	} else {
 		c.String(http.StatusMethodNotAllowed, "method not allowed")
 	}

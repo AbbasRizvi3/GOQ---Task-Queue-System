@@ -69,8 +69,15 @@ func AuthMiddleware() gin.HandlerFunc {
 		if username, ok := (*claims)["username"].(string); ok {
 			c.Set("username", username)
 		}
-		if id, ok := (*claims)["id"].(string); ok {
-			c.Set("id", id)
+
+		var userID string
+		if idFloat, ok := (*claims)["id"].(float64); ok {
+			userID = fmt.Sprintf("%.0f", idFloat)
+		} else if idStr, ok := (*claims)["id"].(string); ok {
+			userID = idStr
+		}
+		if userID != "" {
+			c.Set("id", userID)
 		}
 
 		c.Next()

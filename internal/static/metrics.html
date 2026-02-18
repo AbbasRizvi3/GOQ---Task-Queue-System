@@ -1,0 +1,107 @@
+{{define "metrics.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>System Metrics - GOQ</title>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f3f4f6; color: #1f2937; margin: 0; min-height: 100vh; }
+        .navbar { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+        .navbar h1 { font-size: 1.25rem; font-weight: 800; }
+        .container { max-width: 1000px; margin: 2rem auto; padding: 0 1.5rem; }
+        
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+        
+        .card { background: white; padding: 1.5rem; border-radius: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e5e7eb; }
+        
+        .label { font-size: 0.75rem; color: #6b7280; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; display: block; }
+        .value { font-size: 2.5rem; font-weight: 800; color: #111827; }
+        .unit { font-size: 1rem; color: #9ca3af; font-weight: 500; margin-left: 4px; }
+        
+        .card.cpu { border-top: 4px solid #ef4444; }
+        .card.mem { border-top: 4px solid #3b82f6; }
+        .card.go { border-top: 4px solid #f59e0b; }
+        
+        .bar-bg { background: #f3f4f6; height: 6px; border-radius: 3px; margin-top: 1rem; overflow: hidden; }
+        .bar-fill { height: 100%; background: #3b82f6; transition: width 0.5s; }
+
+        .raw-link { display: block; text-align: center; margin-top: 3rem; color: #6b7280; text-decoration: none; font-size: 0.9rem; }
+        .raw-link:hover { color: #111827; text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <h1>GOQ Performance Metrics</h1>
+        <a href="/api/dashboard" style="color: white; text-decoration: none; font-weight: 600;">Dashboard &rarr;</a>
+    </nav>
+
+    <div class="container" x-data="metrics()">
+        
+        <div class="grid">
+            <div class="card cpu">
+                <span class="label">CPU Cores</span>
+                <div>
+                    <span class="value" x-text="stats.cpus">0</span>
+                    <span class="unit">Cores</span>
+                </div>
+                <div style="margin-top: 1rem; font-size: 0.9rem; color: #6b7280;">
+                    Uptime: <span x-text="stats.uptime" style="font-family: monospace; color: #111827;"></span>
+                </div>
+            </div>
+
+            <div class="card mem">
+                <span class="label">Memory (Heap)</span>
+                <div>
+                    <span class="value" x-text="stats.memory_alloc">0</span>
+                    <span class="unit">MB</span>
+                </div>
+                <div class="bar-bg">
+                    <div class="bar-fill" :style="`width: ${(stats.memory_alloc / (stats.memory_sys || 1)) * 100}%`"></div>
+                </div>
+                <div style="margin-top: 0.5rem; font-size: 0.8rem; color: #6b7280; display: flex; justify-content: space-between;">
+                    <span>System Total: <span x-text="stats.memory_sys"></span> MB</span>
+                </div>
+            </div>
+
+            <div class="card go">
+                <span class="label">Goroutines</span>
+                <div>
+                    <span class="value" x-text="stats.goroutines">0</span>
+                    <span class="unit">Active</span>
+                </div>
+                <div style="margin-top: 1rem; font-size: 0.9rem; color: #6b7280;">
+                    GC Cycles: <span x-text="stats.num_gc" style="font-family: monospace; color: #111827;"></span>
+                </div>
+            </div>
+        </div>
+
+        <a href="/metrics" target="_blank" class="raw-link" 
+           onclick="event.preventDefault(); alert('Use curl or a non-browser client to see raw text, or inspect page source.');">
+           View Raw Prometheus Text format (for scrapers)
+        </a>
+
+    </div>
+
+    <script>
+        function metrics() {
+            return {
+                stats: { cpus: 0, memory_alloc: 0, memory_sys: 1, goroutines: 0, num_gc: 0, uptime: "..." },
+                init() {
+                    this.fetchData();
+                    setInterval(() => this.fetchData(), 1000);
+                },
+                async fetchData() {
+                    try {
+                        const res = await fetch('/metrics?format=json');
+                        if (res.ok) this.stats = await res.json();
+                    } catch(e) { console.error("Poll failed"); }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
+{{end}}

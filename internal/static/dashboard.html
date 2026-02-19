@@ -357,7 +357,7 @@
                         const s = t.State || t.state;
                         if (this.filter === 'running') return s === 'leased';
                         if (this.filter === 'dead') return s === 'dead';
-                        if (this.filter === 'pending') return s === 'pending' || s === 'ready' || s === 'retry';
+                        if (this.filter === 'pending') return s === 'pending'|| s === 'retry';
                         return s === this.filter;
                     });
                 },
@@ -365,7 +365,7 @@
                 get stats() {
                     return {
                         total: this.tasks.length,
-                        pending: this.tasks.filter(t => ['pending', 'ready', 'retry'].includes(t.State||t.state)).length,
+                        pending: this.tasks.filter(t => ['pending', 'retry'].includes(t.State||t.state)).length,
                         running: this.tasks.filter(t => (t.State||t.state) === 'leased').length,
                         completed: this.tasks.filter(t => (t.State||t.state) === 'completed').length,
                         dead: this.tasks.filter(t => (t.State||t.state) === 'dead').length
@@ -390,7 +390,7 @@
                     const max = this.getMaxRetries(t);
                     return ['failed', 'dead', 'canceled', 'retry'].includes(s) && r < max; 
                 },
-                canCancel(t) { if(!t) return false; return ['pending', 'ready', 'leased', 'retry'].includes(t.State||t.state); },
+                canCancel(t) { if(!t) return false; return ['pending', 'leased', 'retry'].includes(t.State||t.state); },
                 formatDate(d) { if (!d || d.startsWith('0001')) return 'Never'; return new Date(d).toLocaleString(); },
                 formatPayload(p) { return typeof p === 'object' ? JSON.stringify(p, null, 2) : (p || 'No Payload'); },
                 showToast(msg, type) {

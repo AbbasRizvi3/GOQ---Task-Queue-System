@@ -30,9 +30,9 @@ func GetTasksHandler(c *gin.Context) {
 		}
 		defer rows.Close()
 
-		var tasks []task.RequestTasks
+		var tasks []task.HandleTask
 		for rows.Next() {
-			var t task.RequestTasks
+			var t task.HandleTask
 			var nextRunAtNull sql.NullTime
 			if err := rows.Scan(&t.ID, &t.Name, &t.Payload, &t.State, &t.RunAt, &t.CreatedAt, &t.MaxRetries, &t.Retries, &nextRunAtNull); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to scan task from database"})
@@ -76,7 +76,7 @@ func GetTaskHandler(c *gin.Context) {
 	if c.Request.Method == "GET" {
 		id := c.Param("id")
 		user_id := c.MustGet("id")
-		var t task.RequestTasks
+		var t task.HandleTask
 		var nextRunAtNull sql.NullTime
 		err := app.Databasehandle.QueryRow("SELECT id, name, payload, state, run_at, created_at, max_retries, retries, next_run_at FROM tasks WHERE id = $1 AND user_id = $2", id, user_id).Scan(&t.ID, &t.Name, &t.Payload, &t.State, &t.RunAt, &t.CreatedAt, &t.MaxRetries, &t.Retries, &nextRunAtNull)
 		if err != nil {
@@ -98,7 +98,7 @@ func GetTaskHandler(c *gin.Context) {
 func PostTaskHandler(c *gin.Context) {
 	if c.Request.Method == "POST" {
 		id := c.MustGet("id")
-		var t task.RequestTask
+		var t task.CreateTaskRequest
 		if err := c.ShouldBindJSON(&t); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
@@ -151,7 +151,7 @@ func RetryTaskHandler(c *gin.Context) {
 	if c.Request.Method == "POST" {
 		id := c.Param("id")
 		user_id := c.MustGet("id")
-		var taskk task.RequestTasks
+		var taskk task.HandleTask
 		var nextRunAtNull sql.NullTime
 		err := app.Databasehandle.QueryRow("SELECT id, name, payload, state, run_at, created_at, max_retries, retries, next_run_at FROM tasks WHERE id = $1 AND user_id = $2", id, user_id).Scan(&taskk.ID, &taskk.Name, &taskk.Payload, &taskk.State, &taskk.RunAt, &taskk.CreatedAt, &taskk.MaxRetries, &taskk.Retries, &nextRunAtNull)
 		if err != nil {
@@ -165,19 +165,18 @@ func RetryTaskHandler(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "only tasks in failed, or canceled state with <3 retries can be retried"})
 			return
 		} else {
-			retries := taskk.Retries + 1
-			if retries > taskk.MaxRetries {
+			if taskk.Retries == taskk.MaxRetries {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "task has exceeded max retries"})
 				return
 			}
 			_, err = app.Databasehandle.Exec("UPDATE tasks SET state = $1, next_run_at = $2, updated_at = $3, retries = $4 WHERE id = $5 AND user_id = $6",
-				"ready", time.Now(), time.Now(), retries, id, user_id)
+				"pending", time.Now(), time.Now(), taskk.Retries+1, id, user_id)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update task in database"})
 				return
 			}
 			userID := getUserID(c)
-			var updatedTask task.RequestTasks
+			var updatedTask task.HandleTask
 			var nextRunAtNull sql.NullTime
 			err = app.Databasehandle.QueryRow("SELECT id, name, payload, state, run_at, created_at, max_retries, retries, next_run_at FROM tasks WHERE id = $1 AND user_id = $2", id, userID).
 				Scan(&updatedTask.ID, &updatedTask.Name, &updatedTask.Payload, &updatedTask.State, &updatedTask.RunAt, &updatedTask.CreatedAt, &updatedTask.MaxRetries, &updatedTask.Retries, &nextRunAtNull)
@@ -207,7 +206,7 @@ func CancelTaskHandler(c *gin.Context) {
 	if c.Request.Method == "POST" {
 		id := c.Param("id")
 		user_id := c.MustGet("id")
-		var taskBuffer task.RequestTasks
+		var taskBuffer task.HandleTask
 		var nextRunAtNull sql.NullTime
 		err := app.Databasehandle.QueryRow("SELECT id, name, payload, state, run_at, created_at, max_retries, retries, next_run_at FROM tasks WHERE id = $1 AND user_id = $2", id, user_id).Scan(&taskBuffer.ID, &taskBuffer.Name, &taskBuffer.Payload, &taskBuffer.State, &taskBuffer.RunAt, &taskBuffer.CreatedAt, &taskBuffer.MaxRetries, &taskBuffer.Retries, &nextRunAtNull)
 		if err != nil {
@@ -215,7 +214,7 @@ func CancelTaskHandler(c *gin.Context) {
 			return
 		}
 		if taskBuffer.State == "completed" || taskBuffer.State == "canceled" || taskBuffer.State == "dead" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "only tasks in pending, ready, leased, retry or failed state can be canceled"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "only tasks in pending, leased, retry or failed state can be canceled"})
 			return
 		} else {
 			_, err = app.Databasehandle.Exec("UPDATE tasks SET state = $1, next_run_at = NULL, updated_at = $2 WHERE id = $3 AND user_id = $4",
@@ -231,7 +230,7 @@ func CancelTaskHandler(c *gin.Context) {
 			}
 
 			userID := getUserID(c)
-			var updatedTask task.RequestTasks
+			var updatedTask task.HandleTask
 			var nextRunAtNull sql.NullTime
 			err = app.Databasehandle.QueryRow("SELECT id, name, payload, state, run_at, created_at, max_retries, retries, next_run_at FROM tasks WHERE id = $1 AND user_id = $2", id, userID).
 				Scan(&updatedTask.ID, &updatedTask.Name, &updatedTask.Payload, &updatedTask.State, &updatedTask.RunAt, &updatedTask.CreatedAt, &updatedTask.MaxRetries, &updatedTask.Retries, &nextRunAtNull)

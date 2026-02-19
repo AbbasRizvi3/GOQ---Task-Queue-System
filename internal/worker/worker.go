@@ -75,7 +75,7 @@ func ProcessTask(memoryQueue *queue.MemoryQueue) {
 							fmt.Printf("Received cancel signal for task %s, marking as canceled\n", task.ID)
 							task.MarkCanceled()
 							SyncTaskToDB(task)
-							err := memoryQueue.RemoveTask(task.ID)
+							_, err := memoryQueue.DequeueTask(task.ID)
 							if err != nil {
 								fmt.Printf("Error removing canceled task %s from memory queue: %v\n", task.ID, err)
 							} else {
@@ -87,7 +87,7 @@ func ProcessTask(memoryQueue *queue.MemoryQueue) {
 					}
 					if task.GetState() == "canceled" {
 						fmt.Printf("Task %s was canceled, skipping processing\n", task.ID)
-						err := memoryQueue.RemoveTask(task.ID)
+						_, err := memoryQueue.DequeueTask(task.ID)
 						if err != nil {
 							fmt.Printf("Error removing canceled task %s from memory queue: %v\n", task.ID, err)
 						} else {
@@ -98,7 +98,7 @@ func ProcessTask(memoryQueue *queue.MemoryQueue) {
 					if rand.Intn(100) < 70 {
 						task.MarkCompleted()
 						SyncTaskToDB(task)
-						err := memoryQueue.RemoveTask(task.ID)
+						_, err := memoryQueue.DequeueTask(task.ID)
 						if err != nil {
 							fmt.Printf("Error removing completed task %s from memory queue: %v\n", task.ID, err)
 						} else {
@@ -109,7 +109,7 @@ func ProcessTask(memoryQueue *queue.MemoryQueue) {
 					} else {
 						task.MarkFailed("Fatal: Task failed due to random error")
 						SyncTaskToDB(task)
-						err := memoryQueue.RemoveTask(task.ID)
+						_, err := memoryQueue.DequeueTask(task.ID)
 						if err != nil {
 							fmt.Printf("Error removing failed task %s from memory queue: %v\n", task.ID, err)
 						} else {

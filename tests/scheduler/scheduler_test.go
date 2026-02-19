@@ -149,8 +149,7 @@ func TestTaskFiltering_ByState(t *testing.T) {
 		"id", "name", "payload", "state", "run_at", "next_run_at", "lease_until", "max_retries", "retries", "error", "created_at", "updated_at",
 	}).
 		AddRow("task1", "test", "payload", "pending", pastTime, time.Time{}, time.Time{}, 3, 0, "", now, now).
-		AddRow("task2", "test", "payload", "retry", pastTime, now.Add(-1*time.Second), time.Time{}, 3, 1, "", now, now).
-		AddRow("task3", "test", "payload", "ready", time.Time{}, now.Add(-1*time.Second), time.Time{}, 3, 0, "", now, now)
+		AddRow("task2", "test", "payload", "retry", pastTime, now.Add(-1*time.Second), time.Time{}, 3, 1, "", now, now)
 
 	mock.ExpectQuery("SELECT id, name, payload, state, run_at, next_run_at").
 		WithArgs(20).

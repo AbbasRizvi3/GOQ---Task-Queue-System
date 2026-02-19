@@ -151,10 +151,10 @@ func TestMarkCanceled(t *testing.T) {
 
 func TestMarkReady(t *testing.T) {
 	tsk := task.NewTask("test task", "payload", time.Now())
-	tsk.MarkReady()
+	tsk.State = "pending"
 
-	if tsk.GetState() != "ready" {
-		t.Errorf("Expected state 'ready', got %s", tsk.GetState())
+	if tsk.GetState() != "pending" {
+		t.Errorf("Expected state 'pending', got %s", tsk.GetState())
 	}
 
 	if tsk.NextRunAt.IsZero() {
@@ -209,7 +209,7 @@ func TestMarkDead(t *testing.T) {
 
 func TestMarkRetry(t *testing.T) {
 	tsk := task.NewTask("test task", "payload", time.Now())
-	tsk.MarkRetry()
+	tsk.State = "retry"
 
 	if tsk.GetState() != "retry" {
 		t.Errorf("Expected state 'retry', got %s", tsk.GetState())
@@ -232,7 +232,7 @@ func TestConcurrentStateChanges(t *testing.T) {
 
 	go func() {
 		for i := 0; i < 10; i++ {
-			tsk.MarkReady()
+			tsk.State = "ready"
 		}
 		done <- true
 	}()

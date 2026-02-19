@@ -49,17 +49,3 @@ func (mq *MemoryQueue) DequeueTask(taskID string) (*task.Task, error) {
 
 	return nil, fmt.Errorf("task with ID %s not found", taskID)
 }
-
-func (mq *MemoryQueue) RemoveTask(taskID string) error {
-	mq.Mutex.Lock()
-	defer mq.Mutex.Unlock()
-
-	for i := len(mq.Tasks) - 1; i >= 0; i-- {
-		if mq.Tasks[i].ID == taskID {
-			mq.Tasks = append(mq.Tasks[:i], mq.Tasks[i+1:]...)
-			return nil
-		}
-	}
-
-	return fmt.Errorf("task with ID %s not found", taskID)
-}

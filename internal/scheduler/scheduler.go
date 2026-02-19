@@ -36,7 +36,7 @@ func fetchAndCacheTasks(memQueue *queue.MemoryQueue) {
 		`SELECT id, user_id, name, payload, state, run_at, next_run_at, lease_until,
        max_retries, retries, error, created_at, updated_at
 	   FROM tasks
-	   WHERE state IN ('pending', 'retry', 'ready')
+	   WHERE state IN ('pending', 'retry')
 	   AND COALESCE(next_run_at, run_at) <= NOW()
 	   ORDER BY COALESCE(next_run_at, run_at)
 	   LIMIT $1;

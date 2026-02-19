@@ -101,6 +101,7 @@ func (t *Task) MarkCompleted() {
 	defer t.Mu.Unlock()
 	t.State = "completed"
 	t.UpdatedAt = time.Now()
+	t.NextRunAt = time.Time{}
 }
 
 func (t *Task) MarkCanceled() {
@@ -113,11 +114,7 @@ func (t *Task) MarkCanceled() {
 	} else {
 		t.State = "canceled"
 		t.UpdatedAt = time.Now()
-		baseDelay := 60 * time.Second
-		backoff := baseDelay * time.Duration(1<<uint(t.Retries-1))
-		jitter := time.Duration(rand.Int63n(int64(backoff)/2)) - backoff/4
-
-		t.NextRunAt = time.Now().Add(backoff + jitter)
+		t.NextRunAt = time.Time{}
 	}
 }
 
@@ -159,6 +156,7 @@ func (t *Task) MarkDead(reason string) {
 	t.State = "dead"
 	t.Error = reason
 	t.UpdatedAt = time.Now()
+	t.NextRunAt = time.Time{}
 	fmt.Printf("Fatal: Task %s is DEAD. Max retries (%d) exceeded. Error: %s\n", t.ID, t.MaxRetries, reason)
 }
 

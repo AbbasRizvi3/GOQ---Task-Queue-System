@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
+	"html/template"
 	healthzhandler "github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/http/handlers/healthz"
 	"github.com/gin-gonic/gin"
 )
@@ -16,6 +16,7 @@ func TestHealthzHandler_Success(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/healthz", nil)
+	req.Header.Set("Accept", "application/json")
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
@@ -26,6 +27,8 @@ func TestHealthzHandler_Success(t *testing.T) {
 func TestHealthzHandler_MultipleRequests(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
+	tmpl := template.Must(template.New("healthz.html").Parse("<p>Test Healthz</p>"))
+    router.SetHTMLTemplate(tmpl)
 	router.GET("/healthz", healthzhandler.HealthzHandler)
 
 	for i := 0; i < 5; i++ {

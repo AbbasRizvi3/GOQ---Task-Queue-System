@@ -9,6 +9,7 @@ import (
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/core/app"
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/models/task"
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/queue"
+	"github.com/gin-gonic/gin"
 )
 
 const (
@@ -137,6 +138,10 @@ func SyncTaskToDB(t *task.Task) {
 	if err != nil {
 		fmt.Println("Error syncing task to DB:", err)
 	} else {
+		app.WebsocketChannelManager.BroadcastJSON(t.UserID, gin.H{
+			"type":    "TASK_UPDATED",
+			"payload": t,
+		})
 		fmt.Printf("Synced task %s to DB with state %s\n", t.ID, t.State)
 	}
 }

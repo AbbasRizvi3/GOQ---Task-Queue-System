@@ -118,7 +118,13 @@ func (t *Task) MarkFailed(reason string) {
 		t.State = "retry"
 		baseDelay := 60 * time.Second
 		backoff := baseDelay * time.Duration(1<<uint(t.Retries-1))
-		jitter := time.Duration(rand.Int63n(int64(backoff)/2)) - backoff/4
+		halfBackoff := int64(backoff) / 2
+		var jitter time.Duration
+		if halfBackoff > 0 {
+			jitter = time.Duration(rand.Int63n(halfBackoff)) - backoff/4
+		} else {
+			jitter = 0
+		}
 
 		t.NextRunAt = now.Add(backoff + jitter)
 		t.Error = reason

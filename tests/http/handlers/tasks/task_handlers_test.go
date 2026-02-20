@@ -10,26 +10,26 @@ import (
 
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/core/app"
 	taskshandler "github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/http/handlers/tasks"
-	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/models/task"
-	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/queue"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/gin-gonic/gin"
 )
 
 func TestGetTasksHandler_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db, _, err := sqlmock.New()
+	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("Failed to create mock DB: %v", err)
 	}
 	defer db.Close()
 
 	app.Databasehandle = db
-	app.MemoryQueue = *queue.NewMemoryQueue()
+	columns := []string{"id", "name", "payload", "state", "run_at", "created_at", "max_retries", "retries", "next_run_at"}
 
-	tsk := task.NewTask("test task", "payload", time.Now())
-	signalCh := make(chan struct{}, 100)
-	app.MemoryQueue.Enqueue(tsk, signalCh)
+	rows := sqlmock.NewRows(columns).AddRow(
+		"task-123", "test task", "test payload", "pending", time.Now(), time.Now(), 3, 0, nil,
+	)
+
+	mock.ExpectQuery("^SELECT (.+) FROM tasks WHERE user_id = \\$1").WillReturnRows(rows)
 
 	router := gin.New()
 	router.GET("/tasks", func(c *gin.Context) {
@@ -42,20 +42,27 @@ func TestGetTasksHandler_Success(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
-		t.Logf("GetTasks returned status %d", w.Code)
+		t.Errorf("GetTasks returned status %d. Body: %s", w.Code, w.Body.String())
 	}
 }
-
 func TestGetTasksHandler_Empty(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db, _, err := sqlmock.New()
+	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("Failed to create mock DB: %v", err)
 	}
 	defer db.Close()
 
 	app.Databasehandle = db
-	app.MemoryQueue = *queue.NewMemoryQueue()
+
+	columns := []string{
+		"id", "user_id", "name", "payload", "state", "run_at",
+		"next_run_at", "lease_until", "max_retries", "retries",
+		"error", "created_at", "updated_at",
+	}
+	rows := sqlmock.NewRows(columns)
+
+	mock.ExpectQuery("^SELECT (.+) FROM tasks").WillReturnRows(rows)
 
 	router := gin.New()
 	router.GET("/tasks", func(c *gin.Context) {
@@ -68,47 +75,21 @@ func TestGetTasksHandler_Empty(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
-		t.Logf("GetTasks with empty queue returned status %d", w.Code)
+		t.Errorf("GetTasks with empty queue returned status %d. Body: %s", w.Code, w.Body.String())
 	}
 }
-
-func TestGetTaskHandler_Success(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	db, _, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("Failed to create mock DB: %v", err)
-	}
-	defer db.Close()
-
-	app.Databasehandle = db
-	app.MemoryQueue = *queue.NewMemoryQueue()
-
-	tsk := task.NewTask("test task", "payload", time.Now())
-	signalCh := make(chan struct{}, 100)
-	app.MemoryQueue.Enqueue(tsk, signalCh)
-
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Request = httptest.NewRequest("GET", "/tasks/"+tsk.ID, nil)
-	c.Params = gin.Params{{Key: "id", Value: tsk.ID}}
-
-	c.JSON(http.StatusOK, gin.H{"task_id": tsk.ID})
-
-	if w.Code != http.StatusOK {
-		t.Logf("GetTask returned status %d", w.Code)
-	}
-}
-
 func TestPostTaskHandler_ValidTask(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db, _, err := sqlmock.New()
+	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("Failed to create mock DB: %v", err)
 	}
 	defer db.Close()
 
 	app.Databasehandle = db
-	app.MemoryQueue = *queue.NewMemoryQueue()
+
+	rows := sqlmock.NewRows([]string{"id"}).AddRow("new-id-1")
+	mock.ExpectQuery("^INSERT INTO tasks").WillReturnRows(rows)
 
 	payload := map[string]interface{}{
 		"name":    "valid task name here",
@@ -116,67 +97,19 @@ func TestPostTaskHandler_ValidTask(t *testing.T) {
 	}
 	body, _ := json.Marshal(payload)
 
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Request = httptest.NewRequest("POST", "/tasks", bytes.NewReader(body))
-	c.Request.Header.Set("Content-Type", "application/json")
-	c.Set("id", "test-user-id")
+	router := gin.New()
+	router.POST("/tasks", func(c *gin.Context) {
+		c.Set("id", "test-user-id")
+		taskshandler.PostTaskHandler(c)
+	})
 
-	c.JSON(http.StatusCreated, gin.H{"task_id": "new-task"})
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/tasks", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK && w.Code != http.StatusCreated {
-		t.Logf("PostTask returned status %d", w.Code)
-	}
-}
-
-func TestPostTaskHandler_InvalidTaskName(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	db, _, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("Failed to create mock DB: %v", err)
-	}
-	defer db.Close()
-
-	app.Databasehandle = db
-	app.MemoryQueue = *queue.NewMemoryQueue()
-
-	payload := map[string]interface{}{
-		"name":    "short",
-		"payload": "test payload",
-	}
-	body, _ := json.Marshal(payload)
-
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Request = httptest.NewRequest("POST", "/tasks", bytes.NewReader(body))
-	c.Request.Header.Set("Content-Type", "application/json")
-	c.Set("id", "test-user-id")
-
-	c.JSON(http.StatusBadRequest, gin.H{"error": "invalid task"})
-
-	if w.Code == http.StatusOK || w.Code == http.StatusCreated {
-		t.Logf("Short task name returned %d (should be error)", w.Code)
-	}
-}
-
-func TestTaskHandler_MethodNotAllowed(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	db, _, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("Failed to create mock DB: %v", err)
-	}
-	defer db.Close()
-
-	app.Databasehandle = db
-	app.MemoryQueue = *queue.NewMemoryQueue()
-
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Request = httptest.NewRequest("DELETE", "/tasks", nil)
-
-	c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
-
-	if w.Code != http.StatusNotFound {
-		t.Logf("DELETE on GET-only endpoint returned %d", w.Code)
+		t.Errorf("PostTask returned status %d. Error body: %s", w.Code, w.Body.String())
 	}
 }

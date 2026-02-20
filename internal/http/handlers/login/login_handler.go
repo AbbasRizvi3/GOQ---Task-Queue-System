@@ -23,8 +23,7 @@ func LoginPageHandler(c *gin.Context) {
 
 func LoginHandler(c *gin.Context) {
 	if c.Request.Method == "POST" {
-		var req auth.LoginRequest
-		req = auth.LoginRequest{
+		req := auth.LoginRequest{
 			Email:    c.PostForm("email"),
 			Password: c.PostForm("password"),
 		}

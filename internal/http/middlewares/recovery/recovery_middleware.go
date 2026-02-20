@@ -19,7 +19,10 @@ func RecoveryMiddleware(c *gin.Context) {
 
 			c.Header("Content-Type", "application/json")
 			c.AbortWithStatus(http.StatusInternalServerError)
-			c.Writer.Write(jsonBody)
+			_, err := c.Writer.Write(jsonBody)
+			if err != nil {
+				fmt.Printf("Error writing JSON response: %v\n", err)
+			}
 		}
 	}()
 

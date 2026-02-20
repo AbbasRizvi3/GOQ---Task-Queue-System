@@ -19,9 +19,8 @@ import (
 
 var router *gin.Engine
 
-func Load() error {
+func Load() {
 	_ = godotenv.Load()
-	return nil
 }
 func main() {
 	Load()
@@ -36,10 +35,10 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	go scheduler.ScheduleTasks(ctx, &app.MemoryQueue)
+	go scheduler.ScheduleTasks(ctx)
 	defer cancel()
 
-	go worker.ProcessTask(&app.MemoryQueue)
+	go worker.ProcessTask()
 
 	router = routers.SetUpRoutes()
 	app.MelodyInstance.HandleConnect(func(s *melody.Session) {
@@ -53,7 +52,10 @@ func main() {
 			app.WebsocketChannelManager.AddClientToChannel(uidStr, s)
 		} else {
 			fmt.Println("Connection attempt without UserID")
-			s.Close()
+			err = s.Close()
+			if err != nil {
+				fmt.Printf("Error closing connection without UserID: %v\n", err)
+			}
 		}
 	})
 
@@ -66,5 +68,10 @@ func main() {
 
 	template.SetupTemplate(router)
 
-	router.Run(":8000")
+	err = router.Run(":8000")
+	if err != nil {
+		fmt.Printf("Error starting server: %v\n", err)
+	} else {
+		fmt.Println("Server started successfully on port 8000")
+	}
 }

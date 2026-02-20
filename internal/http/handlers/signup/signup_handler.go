@@ -25,8 +25,7 @@ func SignupPageHandler(c *gin.Context) {
 
 func SignupHandler(c *gin.Context) {
 	if c.Request.Method == "POST" {
-		var req auth.SignupRequest
-		req = auth.SignupRequest{
+		req := auth.SignupRequest{
 			Name:     c.PostForm("name"),
 			Email:    c.PostForm("email"),
 			Password: c.PostForm("password"),

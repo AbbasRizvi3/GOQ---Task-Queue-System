@@ -20,5 +20,9 @@ func WebsocketHandler(c *gin.Context) {
 		c.JSON(405, gin.H{"error": "Method not allowed"})
 		return
 	}
-	app.MelodyInstance.HandleRequestWithKeys(c.Writer, c.Request, map[string]interface{}{"userID": userID})
+	err := app.MelodyInstance.HandleRequestWithKeys(c.Writer, c.Request, map[string]interface{}{"userID": userID})
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to handle websocket request"})
+		return
+	}
 }

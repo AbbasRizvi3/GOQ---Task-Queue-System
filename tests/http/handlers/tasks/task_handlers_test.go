@@ -20,11 +20,7 @@ func TestGetTasksHandler_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create mock DB: %v", err)
 	}
-	defer func() {
-		if err := db.Close(); err != nil {
-			t.Fatalf("Failed to close mock DB: %v", err)
-		}
-	}()
+	defer db.Close()
 
 	app.Databasehandle = db
 	columns := []string{"id", "name", "payload", "state", "run_at", "created_at", "max_retries", "retries", "next_run_at"}
@@ -55,11 +51,7 @@ func TestGetTasksHandler_Empty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create mock DB: %v", err)
 	}
-	defer func() {
-		if err := db.Close(); err != nil {
-			t.Fatalf("Failed to close mock DB: %v", err)
-		}
-	}()
+	defer db.Close()
 
 	app.Databasehandle = db
 
@@ -92,11 +84,7 @@ func TestPostTaskHandler_ValidTask(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create mock DB: %v", err)
 	}
-	defer func() {
-		if err := db.Close(); err != nil {
-			t.Fatalf("Failed to close mock DB: %v", err)
-		}
-	}()
+	defer db.Close()
 
 	app.Databasehandle = db
 

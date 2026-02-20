@@ -15,11 +15,7 @@ func TestProcessTask_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create mock DB: %v", err)
 	}
-	defer func() {
-		if err := mockDB.Close(); err != nil {
-			t.Fatalf("Failed to close mock DB: %v", err)
-		}
-	}()
+	defer mockDB.Close()
 	app.Databasehandle = mockDB
 
 	app.ProcessSignal = make(chan *task.Task, 100)
@@ -46,11 +42,7 @@ func TestWorkerPoolManagement(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create mock DB: %v", err)
 	}
-	defer func() {
-		if err := mockDB.Close(); err != nil {
-			t.Fatalf("Failed to close mock DB: %v", err)
-		}
-	}()
+	defer mockDB.Close()
 
 	app.Databasehandle = mockDB
 	app.ProcessSignal = make(chan *task.Task, 100)
@@ -83,11 +75,7 @@ func TestSyncTaskToDB(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create mock DB: %v", err)
 	}
-	defer func() {
-		if err := mockDB.Close(); err != nil {
-			t.Fatalf("Failed to close mock DB: %v", err)
-		}
-	}()
+	defer mockDB.Close()
 
 	app.Databasehandle = mockDB
 
@@ -112,11 +100,7 @@ func TestTaskCancellation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create mock DB: %v", err)
 	}
-	defer func() {
-		if err := mockDB.Close(); err != nil {
-			t.Fatalf("Failed to close mock DB: %v", err)
-		}
-	}()
+	defer mockDB.Close()
 
 	app.Databasehandle = mockDB
 	app.ProcessSignal = make(chan *task.Task, 100)

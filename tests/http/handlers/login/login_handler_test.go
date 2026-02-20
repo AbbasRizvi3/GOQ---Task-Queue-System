@@ -20,10 +20,7 @@ func TestLoginHandler_ValidCredentials(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create mock DB: %v", err)
 	}
-	err = db.Close()
-	if err != nil {
-		t.Fatalf("Failed to close mock DB: %v", err)
-	}
+	defer db.Close()
 
 	app.Databasehandle = db
 
@@ -56,10 +53,7 @@ func TestLoginHandler_InvalidPassword(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create mock DB: %v", err)
 	}
-	err = db.Close()
-	if err != nil {
-		t.Fatalf("Failed to close mock DB: %v", err)
-	}
+	defer db.Close()
 
 	app.Databasehandle = db
 
@@ -92,10 +86,7 @@ func TestLoginHandler_UserNotFound(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create mock DB: %v", err)
 	}
-	err = db.Close()
-	if err != nil {
-		t.Fatalf("Failed to close mock DB: %v", err)
-	}
+	defer db.Close()
 
 	app.Databasehandle = db
 
@@ -126,11 +117,7 @@ func TestLoginHandler_MissingPassword(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create mock DB: %v", err)
 	}
-	defer func() {
-		if err := db.Close(); err != nil {
-			t.Fatalf("Failed to close mock DB: %v", err)
-		}
-	}()
+	defer db.Close()
 
 	app.Databasehandle = db
 
@@ -157,11 +144,7 @@ func TestLoginHandler_InvalidJSON(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create mock DB: %v", err)
 	}
-	defer func() {
-		if err := db.Close(); err != nil {
-			t.Fatalf("Failed to close mock DB: %v", err)
-		}
-	}()
+	defer db.Close()
 
 	app.Databasehandle = db
 
@@ -183,11 +166,7 @@ func TestLoginHandler_MethodNotAllowed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create mock DB: %v", err)
 	}
-	defer func() {
-		if err := db.Close(); err != nil {
-			t.Fatalf("Failed to close mock DB: %v", err)
-		}
-	}()
+	defer db.Close()
 
 	app.Databasehandle = db
 

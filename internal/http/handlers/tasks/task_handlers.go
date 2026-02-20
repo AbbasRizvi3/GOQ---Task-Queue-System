@@ -28,7 +28,11 @@ func GetTasksHandler(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch tasks from database"})
 			return
 		}
-		defer rows.Close()
+		defer func() {
+			if err := rows.Close(); err != nil {
+				fmt.Printf("Error closing rows: %v\n", err)
+			}
+		}()
 
 		var tasks []task.HandleTask
 		for rows.Next() {
@@ -59,17 +63,6 @@ func GetTasksHandler(c *gin.Context) {
 	} else {
 		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "method not allowed"})
 	}
-}
-
-func GetTaskDetailHandler(c *gin.Context) {
-	if c.Request.Method == "GET" {
-		c.HTML(http.StatusOK, "task-detail.html", gin.H{
-			"taskId": c.Param("id"),
-		})
-	} else {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "method not allowed"})
-	}
-
 }
 
 func GetTaskHandler(c *gin.Context) {

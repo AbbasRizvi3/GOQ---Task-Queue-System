@@ -43,7 +43,6 @@ func SetUpRoutes() *gin.Engine {
 	router.GET("/logout", logout.LogoutHandler)
 	router.GET("/", landing.LandingPageHandler)
 	group2 := router.Group("/", auth.AuthMiddleware(), cache.NoCacheMiddleware())
-	group2.GET("/tasks/:id", tasks.GetTaskDetailHandler)
 	group2.GET("/ws", websocket.WebsocketHandler)
 
 	group1 := router.Group("/api", auth.AuthMiddleware(), cache.NoCacheMiddleware())

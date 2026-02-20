@@ -8,14 +8,13 @@ import (
 
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/core/app"
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/models/task"
-	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/queue"
 )
 
 const (
 	batchSize = 20
 )
 
-func ScheduleTasks(ctx context.Context, memQueue *queue.MemoryQueue) {
+func ScheduleTasks(ctx context.Context) {
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 	fmt.Println("scheduler started")
@@ -27,11 +26,11 @@ func ScheduleTasks(ctx context.Context, memQueue *queue.MemoryQueue) {
 			return
 
 		case <-ticker.C:
-			fetchAndCacheTasks(memQueue)
+			fetchTasks()
 		}
 	}
 }
-func fetchAndCacheTasks(memQueue *queue.MemoryQueue) {
+func fetchTasks() {
 	rows, err := app.Databasehandle.Query(
 		`SELECT id, user_id, name, payload, state, run_at, next_run_at, lease_until,
        max_retries, retries, error, created_at, updated_at
@@ -45,9 +44,12 @@ func fetchAndCacheTasks(memQueue *queue.MemoryQueue) {
 		fmt.Printf("Error querying tasks: %v\n", err)
 		return
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			fmt.Printf("Error closing rows: %v\n", err)
+		}
+	}()
 
-	var tasks []*task.Task
 	for rows.Next() {
 		var t task.Task
 		var nextRunAtNull sql.NullTime
@@ -59,18 +61,13 @@ func fetchAndCacheTasks(memQueue *queue.MemoryQueue) {
 		if nextRunAtNull.Valid {
 			t.NextRunAt = nextRunAtNull.Time
 		}
-		tasks = append(tasks, &t)
-	}
-	if err := rows.Err(); err != nil {
-		fmt.Printf("Rows error: %v\n", err)
-	}
-
-	for _, t := range tasks {
-		memQueue.Enqueue(t, nil)
 		select {
-		case app.ProcessSignal <- struct{}{}:
+		case app.ProcessSignal <- &t:
 		default:
+			fmt.Printf("ProcessSignal channel is full, skipping task %s\n", t.ID)
 		}
-		fmt.Printf("Fetched and enqueued task %s with state %s, run_at %v, next_run_at %v\n", t.GetID(), t.GetState(), t.GetRunAt(), t.GetNextRunAt())
+
+		fmt.Printf("Fetched and scheduled task %s with state %s, run_at %v, next_run_at %v\n", t.GetID(), t.GetState(), t.GetRunAt(), t.GetNextRunAt())
+
 	}
 }

@@ -20,7 +20,10 @@ func TestSignupHandler_ValidRequest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create mock DB: %v", err)
 	}
-	defer db.Close()
+	err = db.Close()
+	if err != nil {
+		t.Fatalf("Failed to close mock DB: %v", err)
+	}
 
 	app.Databasehandle = db
 
@@ -55,7 +58,11 @@ func TestSignupHandler_EmailAlreadyExists(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create mock DB: %v", err)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Fatalf("Failed to close mock DB: %v", err)
+		}
+	}()
 
 	app.Databasehandle = db
 
@@ -88,7 +95,11 @@ func TestSignupHandler_MissingFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create mock DB: %v", err)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Fatalf("Failed to close mock DB: %v", err)
+		}
+	}()
 
 	app.Databasehandle = db
 
@@ -115,7 +126,11 @@ func TestSignupHandler_MethodNotAllowed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create mock DB: %v", err)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Fatalf("Failed to close mock DB: %v", err)
+		}
+	}()
 
 	app.Databasehandle = db
 
@@ -137,7 +152,11 @@ func TestSignupHandler_InvalidJSON(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create mock DB: %v", err)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Fatalf("Failed to close mock DB: %v", err)
+		}
+	}()
 
 	app.Databasehandle = db
 

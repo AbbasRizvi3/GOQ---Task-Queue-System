@@ -22,6 +22,9 @@ func (c *Channel) RemoveClient(s *melody.Session) {
 
 func (c *Channel) Broadcast(message []byte) {
 	for client := range c.Clients {
-		client.Write(message)
+		err := client.Write(message)
+		if err != nil {
+			c.RemoveClient(client)
+		}
 	}
 }

@@ -7,69 +7,10 @@
     <title>Create Account - GOQ</title>
     
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
-    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        .signup-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 40px;
-            border-radius: 24px;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
-            width: 100%;
-            max-width: 450px;
-            animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        
-        .header { text-align: center; margin-bottom: 30px; }
-        h1 { color: #1a1a1a; font-size: 26px; font-weight: 800; margin-bottom: 5px; }
-        p.subtitle { color: #666; font-size: 14px; }
-        
-        .input-group { margin-bottom: 20px; position: relative; }
-        .input-field {
-            width: 100%; padding: 16px; border: 2px solid #e5e5e5; border-radius: 12px;
-            font-size: 15px; transition: all 0.2s; background: #f9f9f9;
-        }
-        .input-field:focus { outline: none; border-color: #667eea; background: white; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15); }
-        .input-field.error { border-color: #ef4444; background: #fff5f5; }
-        .input-field.success { border-color: #10b981; }
-        
-        .error-msg { color: #ef4444; font-size: 12px; margin-top: 6px; font-weight: 500; display: flex; align-items: center; gap: 4px; }
-        
-        button {
-            width: 100%; padding: 16px; background: #1a1a1a; color: white; border: none;
-            border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s;
-        }
-        button:hover { background: #333; transform: scale(1.01); }
-        button:disabled { opacity: 0.7; cursor: wait; }
-        
-        .alert { padding: 12px 16px; border-radius: 12px; margin-bottom: 25px; font-size: 13px; display: flex; align-items: center; gap: 10px; }
-        .alert-error { background: #fef2f2; color: #991b1b; border: 1px solid #fee2e2; }
-        .alert-success { background: #ecfdf5; color: #065f46; border: 1px solid #d1fae5; }
-        
-        .shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
-        @keyframes shake {
-            10%, 90% { transform: translate3d(-1px, 0, 0); }
-            20%, 80% { transform: translate3d(2px, 0, 0); }
-            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
-            40%, 60% { transform: translate3d(4px, 0, 0); }
-        }
-
-        .footer-links { text-align: center; margin-top: 25px; font-size: 13px; color: #666; }
-        .footer-links a { color: #667eea; text-decoration: none; font-weight: 700; }
-        .hint { font-size: 11px; color: #999; margin-top: 4px; display: block; }
-    </style>
+    
+    <link rel="stylesheet" href="/static/css/signup.css">
+    <script src="/static/js/signup.js"></script>
 </head>
 <body>
 
@@ -98,68 +39,26 @@
         {{end}}
         
         <form method="POST" action="/signup" @submit.prevent="submitForm($el)" novalidate>
-            
             <div class="input-group">
-                <input type="text" name="name" class="input-field" 
-                       placeholder="Full Name"
-                       x-model="formData.name"
-                       @input="validateName()"
-                       :class="{'error': errors.name, 'success': !errors.name && formData.name.length > 2}"
-                       minlength="3"
-                       maxlength="50"
-                       pattern="^[a-zA-Z0-9 ._-]+$"
-                       autocomplete="name"
-                       spellcheck="false">
-                
-                <div class="error-msg" x-show="errors.name" x-transition>
-                    <span x-text="errors.name"></span>
-                </div>
+                <input type="text" name="name" class="input-field" placeholder="Full Name" x-model="formData.name" @input="validateName()" :class="{'error': errors.name, 'success': !errors.name && formData.name.length > 2}" autocomplete="name">
+                <div class="error-msg" x-show="errors.name" x-transition><span x-text="errors.name"></span></div>
                 <span class="hint" x-show="!errors.name">Max 50 chars. Letters, numbers, spaces only.</span>
             </div>
 
             <div class="input-group">
-                <input type="email" name="email" class="input-field" 
-                       placeholder="Email Address"
-                       x-model="formData.email"
-                       @input="validateEmail()"
-                       :class="{'error': errors.email, 'success': !errors.email && formData.email.length > 5}"
-                       maxlength="100"
-                       autocomplete="email">
-                
-                <div class="error-msg" x-show="errors.email" x-transition>
-                    <span x-text="errors.email"></span>
-                </div>
+                <input type="email" name="email" class="input-field" placeholder="Email Address" x-model="formData.email" @input="validateEmail()" :class="{'error': errors.email, 'success': !errors.email && formData.email.length > 5}" autocomplete="email">
+                <div class="error-msg" x-show="errors.email" x-transition><span x-text="errors.email"></span></div>
             </div>
 
             <div class="input-group">
-                <input type="password" name="password" class="input-field" 
-                       placeholder="Password"
-                       x-model="formData.password"
-                       @input="validatePassword()"
-                       :class="{'error': errors.password}"
-                       minlength="8"
-                       maxlength="72"
-                       autocomplete="new-password">
-                
-                <div class="error-msg" x-show="errors.password" x-transition>
-                    <span x-text="errors.password"></span>
-                </div>
+                <input type="password" name="password" class="input-field" placeholder="Password" x-model="formData.password" @input="validatePassword()" :class="{'error': errors.password}" autocomplete="new-password">
+                <div class="error-msg" x-show="errors.password" x-transition><span x-text="errors.password"></span></div>
                 <span class="hint" x-show="!errors.password">At least 8 characters.</span>
             </div>
 
             <div class="input-group">
-                <input type="password" name="confirmPassword" class="input-field" 
-                       placeholder="Confirm Password"
-                       x-model="formData.confirmPassword"
-                       @input="validateConfirm()"
-                       :class="{'error': errors.confirmPassword}"
-                       minlength="8"
-                       maxlength="72"
-                       autocomplete="new-password">
-                
-                <div class="error-msg" x-show="errors.confirmPassword" x-transition>
-                    <span x-text="errors.confirmPassword"></span>
-                </div>
+                <input type="password" name="confirmPassword" class="input-field" placeholder="Confirm Password" x-model="formData.confirmPassword" @input="validateConfirm()" :class="{'error': errors.confirmPassword}" autocomplete="new-password">
+                <div class="error-msg" x-show="errors.confirmPassword" x-transition><span x-text="errors.confirmPassword"></span></div>
             </div>
 
             <button type="submit" :disabled="isSubmitting">
@@ -171,86 +70,6 @@
             Already have an account? <a href="/login">Log in</a>
         </div>
     </div>
-
-    <script>
-        function signupForm(initialName, initialEmail) {
-            return {
-                formData: {
-                    name: initialName || '',
-                    email: initialEmail || '',
-                    password: '',
-                    confirmPassword: ''
-                },
-                errors: {},
-                isSubmitting: false,
-                shakeForm: false,
-
-                validateName() {
-                    const regex = /^[a-zA-Z0-9 ._-]+$/;
-                    if (!this.formData.name.trim()) {
-                        this.errors.name = "Name is required";
-                    } else if (this.formData.name.length < 3) {
-                        this.errors.name = "Name must be at least 3 characters";
-                    } else if (this.formData.name.length > 50) {
-                        this.errors.name = "Name must be less than 50 characters";
-                    } else if (!regex.test(this.formData.name)) {
-                        this.errors.name = "Invalid characters used";
-                    } else {
-                        delete this.errors.name;
-                    }
-                },
-
-                validateEmail() {
-                    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                    if (!this.formData.email.trim()) {
-                        this.errors.email = "Email is required";
-                    } else if (this.formData.email.length > 100) {
-                        this.errors.email = "Email is too long";
-                    } else if (!re.test(this.formData.email)) {
-                        this.errors.email = "Invalid email address";
-                    } else {
-                        delete this.errors.email;
-                    }
-                },
-
-                validatePassword() {
-                    if (!this.formData.password) {
-                        this.errors.password = "Password is required";
-                    } else if (this.formData.password.length < 8) {
-                        this.errors.password = "Must be at least 8 characters";
-                    } else if (this.formData.password.length > 72) {
-                        this.errors.password = "Password is too long";
-                    } else {
-                        delete this.errors.password;
-                    }
-                    
-                    if (this.formData.confirmPassword) this.validateConfirm();
-                },
-
-                validateConfirm() {
-                    if (this.formData.password !== this.formData.confirmPassword) {
-                        this.errors.confirmPassword = "Passwords do not match";
-                    } else delete this.errors.confirmPassword;
-                },
-
-                submitForm(formElement) {
-                    this.validateName();
-                    this.validateEmail();
-                    this.validatePassword();
-                    this.validateConfirm();
-
-                    if (Object.keys(this.errors).length > 0) {
-                        this.shakeForm = true;
-                        setTimeout(() => this.shakeForm = false, 500);
-                        return;
-                    }
-
-                    this.isSubmitting = true;
-                    formElement.submit();
-                }
-            }
-        }
-    </script>
 </body>
 </html>
 {{end}}

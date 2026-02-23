@@ -35,12 +35,6 @@ func decreaseWorkers() {
 	workerCount--
 }
 
-func getWorkerCount() int {
-	mu.Lock()
-	defer mu.Unlock()
-	return workerCount
-}
-
 func ProcessTask() {
 	go func() {
 		for taskBuffer := range app.ProcessSignal {
@@ -61,7 +55,7 @@ func ProcessTask() {
 
 				go func(task *task.Task) {
 					defer func() {
-						fmt.Println("no of workers: ", getWorkerCount())
+						fmt.Println("no of workers: ", workerCount)
 						fmt.Println("decreasing workers")
 						decreaseWorkers()
 					}()
@@ -121,5 +115,5 @@ func checkTask(t *task.Task) (*task.Task, error) {
 		SyncTaskToDB(t)
 		return t, nil
 	}
-	return nil, fmt.Errorf("fatal: task %s is not ready to run (state: %s, next_run_at: %v)", t.ID, t.GetState(), t.NextRunAt)
+	return nil, fmt.Errorf("fatal: task %s is not ready to run (state: %s, next_run_at: %v)", t.ID, t.State, t.NextRunAt)
 }

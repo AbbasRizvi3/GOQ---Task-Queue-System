@@ -29,6 +29,7 @@ const (
 
 func SetUpRoutes() *gin.Engine {
 	router := gin.Default()
+	router.Static("/static", "./internal/static")
 	router.Use(logging.LoggingMiddleware(), timeout.TimeoutMiddleware(timeoutDuration), recovery.RecoveryMiddleware, cache.NoCacheMiddleware())
 	p := ginprom.NewPrometheus("gin")
 	p.MetricsPath = "/metrics-internal-do-not-use"

@@ -67,7 +67,6 @@ func main() {
 	})
 
 	template.SetupTemplate(router)
-
 	err = router.Run(":8000")
 	if err != nil {
 		fmt.Printf("Error starting server: %v\n", err)

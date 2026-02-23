@@ -53,29 +53,6 @@ func (t *Task) IsReadyToRun() bool {
 	return false
 }
 
-func (t *Task) GetState() string {
-	return t.State
-}
-
-func (t *Task) GetNextRunAt() time.Time {
-	return t.NextRunAt
-}
-
-func (t *Task) GetRetries() int {
-	return t.Retries
-}
-
-func (t *Task) GetID() string {
-	return t.ID
-}
-
-func (t *Task) GetRunAt() time.Time {
-	return t.RunAt
-}
-func (t *Task) GetLeaseUntil() time.Time {
-	return t.LeaseUntil
-}
-
 func (t *Task) MarkLeased(leaseSecs int) {
 	t.Mu.Lock()
 	defer t.Mu.Unlock()

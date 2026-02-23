@@ -30,8 +30,9 @@ func ScheduleTasks(ctx context.Context) {
 		}
 	}
 }
-func fetchTasks() {
-	rows, err := app.Databasehandle.Query(
+
+func runFetchTasksQuery() (rows *sql.Rows, err error) {
+	return app.Databasehandle.Query(
 		`SELECT id, user_id, name, payload, state, run_at, next_run_at, lease_until,
        max_retries, retries, error, created_at, updated_at
 	   FROM tasks
@@ -40,16 +41,9 @@ func fetchTasks() {
 	   ORDER BY COALESCE(next_run_at, run_at)
 	   LIMIT $1;
 `, batchSize)
-	if err != nil {
-		fmt.Printf("Error querying tasks: %v\n", err)
-		return
-	}
-	defer func() {
-		if err := rows.Close(); err != nil {
-			fmt.Printf("Error closing rows: %v\n", err)
-		}
-	}()
+}
 
+func sendProcessSignal(rows *sql.Rows) {
 	for rows.Next() {
 		var t task.Task
 		var nextRunAtNull sql.NullTime
@@ -67,7 +61,22 @@ func fetchTasks() {
 			fmt.Printf("ProcessSignal channel is full, skipping task %s\n", t.ID)
 		}
 
-		fmt.Printf("Fetched and scheduled task %s with state %s, run_at %v, next_run_at %v\n", t.GetID(), t.GetState(), t.GetRunAt(), t.GetNextRunAt())
+		fmt.Printf("Fetched and scheduled task %s with state %s, run_at %v, next_run_at %v\n", t.ID, t.State, t.RunAt, t.NextRunAt)
 
 	}
+}
+func fetchTasks() {
+	rows, err := runFetchTasksQuery()
+	if err != nil {
+		fmt.Printf("Error querying tasks: %v\n", err)
+		return
+	}
+	defer func() {
+		if err := rows.Close(); err != nil {
+			fmt.Printf("Error closing rows: %v\n", err)
+		}
+	}()
+
+	sendProcessSignal(rows)
+
 }

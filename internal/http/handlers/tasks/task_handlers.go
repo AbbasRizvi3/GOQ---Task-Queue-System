@@ -20,6 +20,29 @@ func getUserID(c *gin.Context) string {
 	return fmt.Sprintf("%v", id)
 }
 
+func fetchTaskByID(taskID, userID string) (*task.HandleTask, error) {
+	var t task.HandleTask
+	var nextRunAtNull sql.NullTime
+
+	query := `SELECT id, name, payload, state, run_at, created_at, max_retries, retries, next_run_at 
+	          FROM tasks WHERE id = $1 AND user_id = $2`
+
+	err := app.Databasehandle.QueryRow(query, taskID, userID).
+		Scan(&t.ID, &t.Name, &t.Payload, &t.State, &t.RunAt, &t.CreatedAt, &t.MaxRetries, &t.Retries, &nextRunAtNull)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if nextRunAtNull.Valid {
+		t.NextRunAt = nextRunAtNull.Time
+	}
+	if t.Payload == "" || t.Payload == "null" {
+		t.Payload = "No payload"
+	}
+	return &t, nil
+}
+
 func GetTasksHandler(c *gin.Context) {
 	if c.Request.Method == "GET" {
 		id := c.MustGet("id")
@@ -90,23 +113,18 @@ func GetTaskHandler(c *gin.Context) {
 
 func PostTaskHandler(c *gin.Context) {
 	if c.Request.Method == "POST" {
-		id := c.MustGet("id")
 		var t task.CreateTaskRequest
 		if err := c.ShouldBindJSON(&t); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		if t.Name == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "task name is required"})
+		if t.Name == "" || len(t.Name) < 8 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "task name must be at least 8 characters long"})
 			return
 		}
 		if t.RunAt.IsZero() {
 			t.RunAt = time.Now()
 			fmt.Printf("Set RunAt to now: %v\n", t.RunAt)
-		}
-		if len(t.Name) < 8 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "task name must be at least 8 characters long"})
-			return
 		}
 		payloadBytes, err := json.Marshal(t.Payload)
 		if err != nil {
@@ -118,23 +136,22 @@ func PostTaskHandler(c *gin.Context) {
 		if !newTask.NextRunAt.IsZero() {
 			nextRunAtDB = newTask.NextRunAt
 		}
-		err = app.Databasehandle.QueryRow("INSERT INTO tasks (id, name, payload, state, run_at, next_run_at, lease_until, max_retries, retries, error, updated_at, user_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id",
-			newTask.ID, newTask.Name, newTask.Payload, newTask.State, newTask.RunAt, nextRunAtDB, newTask.LeaseUntil, newTask.MaxRetries, newTask.Retries, newTask.Error, time.Now(), id,
-		).Scan(&newTask.ID)
+		query := `INSERT INTO tasks (id, name, payload, state, run_at, next_run_at, lease_until, max_retries, retries, error, updated_at, user_id) 
+	          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`
+
+		err = app.Databasehandle.QueryRow(query, newTask.ID, newTask.Name, newTask.Payload, newTask.State, newTask.RunAt, nextRunAtDB, newTask.LeaseUntil, newTask.MaxRetries, newTask.Retries, newTask.Error, time.Now(), getUserID(c)).Scan(&newTask.ID)
 
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to insert task into database"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to insert task"})
 			return
 		}
-		userID := getUserID(c)
-		app.WebsocketChannelManager.BroadcastJSON(userID, gin.H{
+
+		app.WebsocketChannelManager.BroadcastJSON(getUserID(c), gin.H{
 			"type":    "TASK_CREATED",
 			"payload": newTask,
 		})
 
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Task created successfully",
-		})
+		c.JSON(http.StatusOK, gin.H{"message": "Task created successfully"})
 	} else {
 		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "method not allowed"})
 	}
@@ -143,16 +160,11 @@ func PostTaskHandler(c *gin.Context) {
 func RetryTaskHandler(c *gin.Context) {
 	if c.Request.Method == "POST" {
 		id := c.Param("id")
-		user_id := c.MustGet("id")
-		var taskk task.HandleTask
-		var nextRunAtNull sql.NullTime
-		err := app.Databasehandle.QueryRow("SELECT id, name, payload, state, run_at, created_at, max_retries, retries, next_run_at FROM tasks WHERE id = $1 AND user_id = $2", id, user_id).Scan(&taskk.ID, &taskk.Name, &taskk.Payload, &taskk.State, &taskk.RunAt, &taskk.CreatedAt, &taskk.MaxRetries, &taskk.Retries, &nextRunAtNull)
+		user_id := getUserID(c)
+		taskk, err := fetchTaskByID(id, user_id)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch task from database"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch task"})
 			return
-		}
-		if nextRunAtNull.Valid {
-			taskk.NextRunAt = nextRunAtNull.Time
 		}
 		if taskk.State == "leased" || taskk.State == "completed" || taskk.State == "dead" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "only tasks in failed, or canceled state with <3 retries can be retried"})
@@ -168,23 +180,13 @@ func RetryTaskHandler(c *gin.Context) {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update task in database"})
 				return
 			}
-			userID := getUserID(c)
-			var updatedTask task.HandleTask
-			var nextRunAtNull sql.NullTime
-			err = app.Databasehandle.QueryRow("SELECT id, name, payload, state, run_at, created_at, max_retries, retries, next_run_at FROM tasks WHERE id = $1 AND user_id = $2", id, userID).
-				Scan(&updatedTask.ID, &updatedTask.Name, &updatedTask.Payload, &updatedTask.State, &updatedTask.RunAt, &updatedTask.CreatedAt, &updatedTask.MaxRetries, &updatedTask.Retries, &nextRunAtNull)
+			updatedTask, _ := fetchTaskByID(id, user_id)
+			app.WebsocketChannelManager.BroadcastJSON(user_id, gin.H{
+				"type":    "TASK_UPDATED",
+				"payload": updatedTask,
+			})
 
-			if err != nil {
-				fmt.Printf("Error fetching updated task for broadcast: %v\n", err)
-			} else {
-				if nextRunAtNull.Valid {
-					updatedTask.NextRunAt = nextRunAtNull.Time
-				}
-				app.WebsocketChannelManager.BroadcastJSON(userID, gin.H{
-					"type":    "TASK_UPDATED",
-					"payload": updatedTask,
-				})
-			}
+			c.JSON(http.StatusOK, gin.H{"message": "Task retried successfully"})
 
 			c.JSON(http.StatusOK, gin.H{
 				"message": "Task retried successfully",
@@ -198,12 +200,11 @@ func RetryTaskHandler(c *gin.Context) {
 func CancelTaskHandler(c *gin.Context) {
 	if c.Request.Method == "POST" {
 		id := c.Param("id")
-		user_id := c.MustGet("id")
-		var taskBuffer task.HandleTask
-		var nextRunAtNull sql.NullTime
-		err := app.Databasehandle.QueryRow("SELECT id, name, payload, state, run_at, created_at, max_retries, retries, next_run_at FROM tasks WHERE id = $1 AND user_id = $2", id, user_id).Scan(&taskBuffer.ID, &taskBuffer.Name, &taskBuffer.Payload, &taskBuffer.State, &taskBuffer.RunAt, &taskBuffer.CreatedAt, &taskBuffer.MaxRetries, &taskBuffer.Retries, &nextRunAtNull)
+		user_id := getUserID(c)
+
+		taskBuffer, err := fetchTaskByID(id, user_id)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch task from database"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch task"})
 			return
 		}
 		if taskBuffer.State == "completed" || taskBuffer.State == "canceled" || taskBuffer.State == "dead" {
@@ -221,27 +222,13 @@ func CancelTaskHandler(c *gin.Context) {
 				fmt.Printf("Sent cancel signal for task %s to worker\n", id)
 			default:
 			}
-
-			userID := getUserID(c)
-			var updatedTask task.HandleTask
-			var nextRunAtNull sql.NullTime
-			err = app.Databasehandle.QueryRow("SELECT id, name, payload, state, run_at, created_at, max_retries, retries, next_run_at FROM tasks WHERE id = $1 AND user_id = $2", id, userID).
-				Scan(&updatedTask.ID, &updatedTask.Name, &updatedTask.Payload, &updatedTask.State, &updatedTask.RunAt, &updatedTask.CreatedAt, &updatedTask.MaxRetries, &updatedTask.Retries, &nextRunAtNull)
-
-			if err == nil {
-				if nextRunAtNull.Valid {
-					updatedTask.NextRunAt = nextRunAtNull.Time
-				}
-				app.WebsocketChannelManager.BroadcastJSON(userID, gin.H{
-					"type":    "TASK_UPDATED",
-					"payload": updatedTask,
-				})
-			}
-			c.JSON(http.StatusOK, gin.H{
-				"message": "Task canceled successfully",
+			updatedTask, _ := fetchTaskByID(id, user_id)
+			app.WebsocketChannelManager.BroadcastJSON(user_id, gin.H{
+				"type":    "TASK_UPDATED",
+				"payload": updatedTask,
 			})
+			c.JSON(http.StatusOK, gin.H{"message": "Task canceled successfully"})
 		}
-
 	} else {
 		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "method not allowed"})
 	}

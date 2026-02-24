@@ -1,0 +1,97 @@
+body { 
+    font-family: 'Inter', sans-serif; 
+    background: #f3f4f6; 
+    color: #1f2937; 
+    margin: 0; 
+    min-height: 100vh; 
+}
+
+.navbar { 
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+    color: white; 
+    padding: 1rem 2rem; 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+}
+
+.navbar h1 { 
+    font-size: 1.25rem; 
+    font-weight: 800; 
+    margin: 0;
+}
+
+.container { 
+    max-width: 1000px; 
+    margin: 2rem auto; 
+    padding: 0 1.5rem; 
+}
+
+.grid { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+    gap: 1.5rem; 
+}
+
+.card { 
+    background: white; 
+    padding: 1.5rem; 
+    border-radius: 1rem; 
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
+    border: 1px solid #e5e7eb; 
+}
+
+.label { 
+    font-size: 0.75rem; 
+    color: #6b7280; 
+    font-weight: 700; 
+    text-transform: uppercase; 
+    letter-spacing: 0.05em; 
+    margin-bottom: 0.5rem; 
+    display: block; 
+}
+
+.value { 
+    font-size: 2.5rem; 
+    font-weight: 800; 
+    color: #111827; 
+}
+
+.unit { 
+    font-size: 1rem; 
+    color: #9ca3af; 
+    font-weight: 500; 
+    margin-left: 4px; 
+}
+
+.card.cpu { border-top: 4px solid #ef4444; }
+.card.mem { border-top: 4px solid #3b82f6; }
+.card.go { border-top: 4px solid #f59e0b; }
+
+.bar-bg { 
+    background: #f3f4f6; 
+    height: 6px; 
+    border-radius: 3px; 
+    margin-top: 1rem; 
+    overflow: hidden; 
+}
+
+.bar-fill { 
+    height: 100%; 
+    background: #3b82f6; 
+    transition: width 0.5s; 
+}
+
+.raw-link { 
+    display: block; 
+    text-align: center; 
+    margin-top: 3rem; 
+    color: #6b7280; 
+    text-decoration: none; 
+    font-size: 0.9rem; 
+}
+
+.raw-link:hover { 
+    color: #111827; 
+    text-decoration: underline; 
+}

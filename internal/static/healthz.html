@@ -1,0 +1,35 @@
+{{define "healthz.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Status - GOQ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="/static/css/healthz.css">
+</head>
+<body>
+
+    <div class="shape shape-1"></div>
+    <div class="shape shape-2"></div>
+
+    <div class="status-card">
+        <div class="status-icon-wrapper">
+            <div class="pulse-ring"></div>
+            <div class="status-circle">
+                <svg width="40" height="40" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path>
+                </svg>
+            </div>
+        </div>
+
+        <h1>{{.Status}}</h1>
+        <p>{{.Message}}</p>
+
+        <a href="/api/dashboard" class="btn">Go to Dashboard</a>
+    </div>
+
+</body>
+</html>
+{{end}}

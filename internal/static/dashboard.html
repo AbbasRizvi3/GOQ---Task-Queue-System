@@ -1,0 +1,155 @@
+{{define "dashboard.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - GOQ</title>
+    
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <script src="/static/js/dashboard.js"></script>
+</head>
+<body>
+
+    <div x-data="app()" x-init="init()" class="app-wrapper">
+        <nav class="navbar">
+            <h1>
+                GOQ Dashboard 
+                <span class="status-dot" :class="connected ? 'connected' : 'disconnected'" 
+                      :title="connected ? 'Real-time: Connected' : 'Disconnected: Reconnecting...'"></span>
+            </h1>
+            <a href="/logout" class="nav-link">Log Out</a>
+        </nav>
+
+        <div class="container">
+
+            <div x-show="currentView === 'dashboard'" x-transition>
+                
+                <div style="display: flex; justify-content: space-between; margin-bottom: 1.5rem;">
+                    <h2 style="font-size: 1.5rem; font-weight: 700;">
+                        <span x-text="filterLabel"></span> Tasks
+                    </h2>
+                    <button @click="openModal()" class="btn btn-primary">+ New Task</button>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card" :class="{'active': filter === 'all'}" @click="filter = 'all'">
+                        <div class="stat-label">Total</div>
+                        <div class="stat-value" x-text="stats.total">0</div>
+                    </div>
+                    <div class="stat-card" :class="{'active': filter === 'pending'}" @click="filter = 'pending'">
+                        <div class="stat-label">Pending</div>
+                        <div class="stat-value" style="color: #c2410c;" x-text="stats.pending">0</div>
+                    </div>
+                    <div class="stat-card" :class="{'active': filter === 'running'}" @click="filter = 'running'">
+                        <div class="stat-label">Running</div>
+                        <div class="stat-value" style="color: #0284c7;" x-text="stats.running">0</div>
+                    </div>
+                    <div class="stat-card" :class="{'active': filter === 'completed'}" @click="filter = 'completed'">
+                        <div class="stat-label">Completed</div>
+                        <div class="stat-value" style="color: #047857;" x-text="stats.completed">0</div>
+                    </div>
+                    <div class="stat-card" :class="{'active-dead': filter === 'dead'}" @click="filter = 'dead'">
+                        <div class="stat-label">Dead Queue</div>
+                        <div class="stat-value" style="color: #b91c1c;" x-text="stats.dead">0</div>
+                    </div>
+                </div>
+
+                <div class="task-list">
+                    <div x-show="isLoading" style="padding: 2rem; text-align: center; color: #6b7280;">Loading tasks...</div>
+                    
+                    <div x-show="!isLoading && filteredTasks.length === 0" style="padding: 3rem; text-align: center; color: #6b7280;">
+                        <p x-text="'No ' + (filter === 'all' ? '' : filter) + ' tasks found.'"></p>
+                    </div>
+
+                    <template x-for="task in filteredTasks" :key="task.ID || task.id">
+                        <div class="task-item" @click="loadDetail(task.ID || task.id)">
+                            <div>
+                                <div class="task-title" x-text="task.Name || task.name"></div>
+                                <div class="task-meta">
+                                    Run At: <span x-text="formatDate(task.RunAt || task.run_at)"></span>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 1rem; align-items: center;">
+                                <span class="badge" :class="'status-' + (task.State || task.state)" x-text="task.State || task.state"></span>
+                                <button class="btn btn-view">View</button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <div x-show="currentView === 'detail'" style="display: none;" x-transition>
+                <div @click="goBack()" class="back-btn">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                    Back to Dashboard
+                </div>
+
+                <div x-show="!selectedTask" style="text-align: center; padding: 4rem;">Loading details...</div>
+
+                <div class="detail-view" x-show="selectedTask">
+                    <div style="display: flex; justify-content: space-between; align-items: start; border-bottom: 1px solid #e5e7eb; padding-bottom: 1.5rem;">
+                        <div>
+                            <div style="font-size: 0.85rem; color: #6b7280; font-weight: 700; margin-bottom: 0.25rem;">TASK ID: <span x-text="selectedTask?.ID || selectedTask?.id"></span></div>
+                            <h1 style="font-size: 1.75rem; font-weight: 800;" x-text="selectedTask?.Name || selectedTask?.name"></h1>
+                        </div>
+                        <span class="badge" :class="'status-' + (selectedTask?.State || selectedTask?.state)" x-text="selectedTask?.State || selectedTask?.state" style="font-size: 1rem; padding: 0.5rem 1rem;"></span>
+                    </div>
+
+                    <div class="info-grid">
+                        <div><div class="info-label">Created At</div><div class="info-val" x-text="formatDate(selectedTask?.CreatedAt || selectedTask?.created_at)"></div></div>
+                        <div><div class="info-label">Scheduled Run</div><div class="info-val" x-text="formatDate(selectedTask?.RunAt || selectedTask?.run_at)"></div></div>
+                        <div><div class="info-label">Next Run At</div><div class="info-val" x-text="formatDate(selectedTask?.NextRunAt || selectedTask?.next_run_at)"></div></div>
+                        <div><div class="info-label">Last Updated</div><div class="info-val" x-text="formatDate(selectedTask?.UpdatedAt || selectedTask?.updated_at || selectedTask?.last_updated)"></div></div>
+                        <div><div class="info-label">Retries</div><div class="info-val"><span x-text="getRetryCount(selectedTask)"></span> / <span x-text="getMaxRetries(selectedTask)"></span></div></div>
+                    </div>
+
+                    <div style="margin-top: 2rem;">
+                        <div class="info-label">Payload</div>
+                        <div class="payload-box" x-text="formatPayload(selectedTask?.Payload || selectedTask?.payload)"></div>
+                    </div>
+
+                    <div x-show="['failed', 'dead', 'retry'].includes(selectedTask?.State || selectedTask?.state)" style="margin-top: 2rem;">
+                        <div class="info-label" style="color: #ef4444;">ERROR LOG</div>
+                        <div class="error-console" x-text="selectedTask?.Error || selectedTask?.error || 'No error details provided by the worker.'"></div>
+                    </div>
+
+                    <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #e5e7eb; display: flex; gap: 1rem;">
+                        <button x-show="canRetry(selectedTask)" @click="performAction('retry')" class="btn" style="background: #fffbeb; color: #92400e; border: 1px solid #fcd34d;">Retry Task</button>
+                        <button x-show="canCancel(selectedTask)" @click="performAction('cancel')" class="btn" style="background: #fef2f2; color: #991b1b; border: 1px solid #fecaca;">Cancel Task</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div x-show="showModal" class="modal-overlay" style="display: none;" x-transition>
+            <div class="modal-card" @click.away="closeModal()">
+                <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem;">Create New Task</h2>
+                <form @submit.prevent="submitTask()">
+                    <label style="display:block; font-weight:600; margin-bottom:0.5rem;">Task Name</label>
+                    <input type="text" x-model="newTask.name" class="input-field" required minlength="8">
+                    
+                    <label style="display:block; font-weight:600; margin-bottom:0.5rem;">Payload</label>
+                    <input type="text" x-model="newTask.payload" class="input-field" placeholder='{"id": 1}'>
+                    
+                    <label style="display:block; font-weight:600; margin-bottom:0.5rem;">Run At</label>
+                    <input type="datetime-local" x-model="newTask.runAt" class="input-field" required step="1" :min="nowString" @input="userHasEditedTime = true">
+                    
+                    <div style="display:flex; justify-content:flex-end; gap:1rem; margin-top:1rem;">
+                        <button type="button" @click="closeModal()" class="btn" style="background:#f3f4f6;">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Create</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div x-show="toast.show" class="toast" :class="{'error': toast.type === 'error'}" x-transition style="display: none;">
+            <span x-text="toast.message"></span>
+        </div>
+    </div>
+</body>
+</html>
+{{end}}

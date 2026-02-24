@@ -1,0 +1,69 @@
+{{define "metrics.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>System Metrics - GOQ</title>
+    
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="/static/css/metrics.css">
+    <script src="/static/js/metrics.js"></script>
+</head>
+<body>
+
+    <nav class="navbar">
+        <h1>GOQ Performance Metrics</h1>
+        <a href="/api/dashboard" style="color: white; text-decoration: none; font-weight: 600;">Dashboard &rarr;</a>
+    </nav>
+
+    <div class="container" x-data="metrics()">
+        
+        <div class="grid">
+            <div class="card cpu">
+                <span class="label">CPU Cores</span>
+                <div>
+                    <span class="value" x-text="stats.cpus">0</span>
+                    <span class="unit">Cores</span>
+                </div>
+                <div style="margin-top: 1rem; font-size: 0.9rem; color: #6b7280;">
+                    Uptime: <span x-text="stats.uptime" style="font-family: monospace; color: #111827;"></span>
+                </div>
+            </div>
+
+            <div class="card mem">
+                <span class="label">Memory (Heap)</span>
+                <div>
+                    <span class="value" x-text="stats.memory_alloc">0</span>
+                    <span class="unit">MB</span>
+                </div>
+                <div class="bar-bg">
+                    <div class="bar-fill" :style="`width: ${(stats.memory_alloc / (stats.memory_sys || 1)) * 100}%`"></div>
+                </div>
+                <div style="margin-top: 0.5rem; font-size: 0.8rem; color: #6b7280; display: flex; justify-content: space-between;">
+                    <span>System Total: <span x-text="stats.memory_sys"></span> MB</span>
+                </div>
+            </div>
+
+            <div class="card go">
+                <span class="label">Goroutines</span>
+                <div>
+                    <span class="value" x-text="stats.goroutines">0</span>
+                    <span class="unit">Active</span>
+                </div>
+                <div style="margin-top: 1rem; font-size: 0.9rem; color: #6b7280;">
+                    GC Cycles: <span x-text="stats.num_gc" style="font-family: monospace; color: #111827;"></span>
+                </div>
+            </div>
+        </div>
+
+        <a href="/metrics" target="_blank" class="raw-link" 
+           onclick="event.preventDefault(); alert('Use curl or a non-browser client to see raw text, or inspect page source.');">
+           View Raw Prometheus Text format (for scrapers)
+        </a>
+
+    </div>
+</body>
+</html>
+{{end}}

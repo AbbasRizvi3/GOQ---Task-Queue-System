@@ -1,0 +1,75 @@
+{{define "signup.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Account - GOQ</title>
+    
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="/static/css/signup.css">
+    <script src="/static/js/signup.js"></script>
+</head>
+<body>
+
+    <div class="signup-card" 
+         x-data="signupForm('{{.Name}}', '{{.Email}}')" 
+         :class="{ 'shake': shakeForm }">
+
+        <div class="header">
+            <h1>Create Account</h1>
+            <p class="subtitle">Join GOQ System</p>
+        </div>
+        
+        {{if .Error}}
+        <div class="alert alert-error">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            <span>{{.Error}}</span>
+        </div>
+        {{end}}
+        
+        {{if .Success}}
+        <div class="alert alert-success">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            <span>{{.Success}}</span>
+        </div>
+        <script>setTimeout(() => window.location.href = '/login', 2000);</script>
+        {{end}}
+        
+        <form method="POST" action="/signup" @submit.prevent="submitForm($el)" novalidate>
+            <div class="input-group">
+                <input type="text" name="name" class="input-field" placeholder="Full Name" x-model="formData.name" @input="validateName()" :class="{'error': errors.name, 'success': !errors.name && formData.name.length > 2}" autocomplete="name">
+                <div class="error-msg" x-show="errors.name" x-transition><span x-text="errors.name"></span></div>
+                <span class="hint" x-show="!errors.name">Max 50 chars. Letters, numbers, spaces only.</span>
+            </div>
+
+            <div class="input-group">
+                <input type="email" name="email" class="input-field" placeholder="Email Address" x-model="formData.email" @input="validateEmail()" :class="{'error': errors.email, 'success': !errors.email && formData.email.length > 5}" autocomplete="email">
+                <div class="error-msg" x-show="errors.email" x-transition><span x-text="errors.email"></span></div>
+            </div>
+
+            <div class="input-group">
+                <input type="password" name="password" class="input-field" placeholder="Password" x-model="formData.password" @input="validatePassword()" :class="{'error': errors.password}" autocomplete="new-password">
+                <div class="error-msg" x-show="errors.password" x-transition><span x-text="errors.password"></span></div>
+                <span class="hint" x-show="!errors.password">At least 8 characters.</span>
+            </div>
+
+            <div class="input-group">
+                <input type="password" name="confirmPassword" class="input-field" placeholder="Confirm Password" x-model="formData.confirmPassword" @input="validateConfirm()" :class="{'error': errors.confirmPassword}" autocomplete="new-password">
+                <div class="error-msg" x-show="errors.confirmPassword" x-transition><span x-text="errors.confirmPassword"></span></div>
+            </div>
+
+            <button type="submit" :disabled="isSubmitting">
+                <span x-text="isSubmitting ? 'Creating Account...' : 'Sign Up'"></span>
+            </button>
+        </form>
+
+        <div class="footer-links">
+            Already have an account? <a href="/login">Log in</a>
+        </div>
+    </div>
+</body>
+</html>
+{{end}}

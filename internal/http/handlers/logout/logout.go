@@ -7,8 +7,8 @@ import (
 )
 
 func LogoutHandler(c *gin.Context) {
-	c.SetCookie("auth_token", "", -1, "/", "", false, true)
-	c.SetCookie("session_id", "", -1, "/", "", false, true)
+	c.SetCookie("auth_token", "", -1, "/", "", true, true)
+	c.SetCookie("session_id", "", -1, "/", "", true, true)
 
 	c.Header("Cache-Control", "no-cache, no-store, must-revalidate, private")
 	c.Header("Pragma", "no-cache")

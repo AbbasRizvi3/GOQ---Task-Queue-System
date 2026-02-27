@@ -174,7 +174,7 @@ func RetryTaskHandler(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "task has exceeded max retries"})
 				return
 			}
-			_, err = app.Databasehandle.Exec("UPDATE tasks SET state = $1, next_run_at = $2, updated_at = $3, retries = $4 WHERE id = $5 AND user_id = $6",
+			_, err = app.Databasehandle.Exec("UPDATE tasks SET state = $1, next_run_at = $2, updated_at = $3, retries = $4, lease_until = NULL WHERE id = $5 AND user_id = $6",
 				"pending", time.Now(), time.Now(), taskk.Retries+1, id, user_id)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update task in database"})
@@ -187,10 +187,6 @@ func RetryTaskHandler(c *gin.Context) {
 			})
 
 			c.JSON(http.StatusOK, gin.H{"message": "Task retried successfully"})
-
-			c.JSON(http.StatusOK, gin.H{
-				"message": "Task retried successfully",
-			})
 		}
 	} else {
 		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "method not allowed"})
@@ -216,11 +212,6 @@ func CancelTaskHandler(c *gin.Context) {
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update task in database"})
 				return
-			}
-			select {
-			case app.CancelSignal <- id:
-				fmt.Printf("Sent cancel signal for task %s to worker\n", id)
-			default:
 			}
 			updatedTask, _ := fetchTaskByID(id, user_id)
 			app.WebsocketChannelManager.BroadcastJSON(user_id, gin.H{

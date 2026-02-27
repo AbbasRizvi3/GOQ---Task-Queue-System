@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"sync"
@@ -12,7 +13,6 @@ import (
 )
 
 const (
-	leaseTime  = 8 * time.Second
 	maxWorkers = 5
 )
 
@@ -35,19 +35,23 @@ func decreaseWorkers() {
 	workerCount--
 }
 
-func ProcessTask() {
+func ProcessTask(ctx context.Context) {
 	go func() {
-		for taskBuffer := range app.ProcessSignal {
-			for {
+		for {
+			select {
+			case <-ctx.Done():
+				fmt.Println("Worker stopped")
+				return
+			case taskBuffer := <-app.ProcessSignal:
 				if !increaseWorkers() {
 					fmt.Println("Max workers reached, cannot process more tasks at the moment")
-					break
+					continue
 				}
 				t, err := checkTask(taskBuffer)
 				if err != nil {
 					fmt.Println("Task is not ready to run, skipping for now:", err)
 					decreaseWorkers()
-					break
+					continue
 				}
 
 				fmt.Println("increasing workers")
@@ -59,16 +63,27 @@ func ProcessTask() {
 						fmt.Println("decreasing workers")
 						decreaseWorkers()
 					}()
+					assignedLease := task.LeaseUntil
 					fmt.Printf("Worker processing task %s\n", task.ID)
 					time.Sleep(5 * time.Second)
-					select {
-					case cancelID := <-app.CancelSignal:
-						if cancelID == task.ID {
-							fmt.Printf("Received cancel signal for task %s, marking as canceled\n", task.ID)
-							return
-						}
-					default:
+
+					var currentState string
+					var currentLease time.Time
+					err := app.Databasehandle.QueryRow(
+						"SELECT state, lease_until FROM tasks WHERE id = $1",
+						task.ID,
+					).Scan(&currentState, &currentLease)
+
+					if err != nil {
+						fmt.Printf("Error checking task status: %v\n", err)
+						return
 					}
+
+					if currentState == "canceled" || !currentLease.Equal(assignedLease) {
+						fmt.Printf("Worker for task %s lost ownership (State: %s). Aborting.\n", task.ID, currentState)
+						return
+					}
+
 					if rand.Intn(100) < 70 {
 						task.MarkCompleted()
 						SyncTaskToDB(task)
@@ -86,8 +101,10 @@ func ProcessTask() {
 						return
 					}
 				}(t)
+
 			}
 		}
+
 	}()
 }
 
@@ -110,10 +127,8 @@ func SyncTaskToDB(t *task.Task) {
 }
 
 func checkTask(t *task.Task) (*task.Task, error) {
-	if t.IsReadyToRun() {
-		t.MarkLeased(int(leaseTime.Seconds()))
-		SyncTaskToDB(t)
+	if t.State == "leased" {
 		return t, nil
 	}
-	return nil, fmt.Errorf("fatal: task %s is not ready to run (state: %s, next_run_at: %v)", t.ID, t.State, t.NextRunAt)
+	return nil, fmt.Errorf("task %s is not in leased state (actual: %s)", t.ID, t.State)
 }

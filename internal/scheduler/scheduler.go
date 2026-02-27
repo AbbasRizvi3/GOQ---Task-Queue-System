@@ -8,6 +8,7 @@ import (
 
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/core/app"
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/models/task"
+	"github.com/gin-gonic/gin"
 )
 
 const (
@@ -33,14 +34,22 @@ func ScheduleTasks(ctx context.Context) {
 
 func runFetchTasksQuery() (rows *sql.Rows, err error) {
 	return app.Databasehandle.Query(
-		`SELECT id, user_id, name, payload, state, run_at, next_run_at, lease_until,
-       max_retries, retries, error, created_at, updated_at
-	   FROM tasks
-	   WHERE state IN ('pending', 'retry')
-	   AND COALESCE(next_run_at, run_at) <= NOW()
-	   ORDER BY COALESCE(next_run_at, run_at)
-	   LIMIT $1;
-`, batchSize)
+		`UPDATE tasks
+         SET state = 'leased', 
+             lease_until = NOW() + ($2 || ' seconds')::INTERVAL,
+             updated_at = NOW()
+         WHERE id IN (
+             SELECT id
+             FROM tasks
+             WHERE state IN ('pending', 'retry')
+             AND COALESCE(next_run_at, run_at) <= NOW()
+             ORDER BY COALESCE(next_run_at, run_at)
+             FOR UPDATE SKIP LOCKED
+             LIMIT $1
+         )
+         RETURNING id, user_id, name, payload, state, run_at, next_run_at, lease_until,
+                   max_retries, retries, error, created_at, updated_at;`,
+		batchSize, 8)
 }
 
 func sendProcessSignal(rows *sql.Rows) {
@@ -55,6 +64,10 @@ func sendProcessSignal(rows *sql.Rows) {
 		if nextRunAtNull.Valid {
 			t.NextRunAt = nextRunAtNull.Time
 		}
+		app.WebsocketChannelManager.BroadcastJSON(t.UserID, gin.H{
+			"type":    "TASK_UPDATED",
+			"payload": t,
+		})
 		select {
 		case app.ProcessSignal <- &t:
 		default:

@@ -1,6 +1,7 @@
 package worker_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -10,6 +11,10 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 )
 
+func setupTestCtx() (context.Context, context.CancelFunc) {
+	return context.WithCancel(context.Background())
+}
+
 func TestProcessTask_Success(t *testing.T) {
 	mockDB, mock, err := sqlmock.New()
 	if err != nil {
@@ -17,27 +22,36 @@ func TestProcessTask_Success(t *testing.T) {
 	}
 	defer mockDB.Close()
 	app.Databasehandle = mockDB
-
 	app.ProcessSignal = make(chan *task.Task, 100)
-	app.CancelSignal = make(chan string, 100)
 
-	mock.ExpectExec("^UPDATE tasks SET state").WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectExec("^UPDATE tasks SET state").WillReturnResult(sqlmock.NewResult(0, 1))
-
-	workerpkg.ProcessTask()
-
+	ctx, cancel := setupTestCtx()
+	defer cancel()
 	now := time.Now()
-	tsk := task.NewTask("test", "payload", now.Add(-1*time.Hour))
-	tsk.State = "pending"
+	leaseTime := now.Add(8 * time.Second)
+	tsk := &task.Task{
+		ID:         "task-1",
+		State:      "leased",
+		LeaseUntil: leaseTime,
+	}
+
+	mock.ExpectQuery("SELECT state, lease_until FROM tasks WHERE id =").
+		WithArgs(tsk.ID).
+		WillReturnRows(sqlmock.NewRows([]string{"state", "lease_until"}).
+			AddRow("leased", leaseTime))
+
+	mock.ExpectExec("^UPDATE tasks SET state").WillReturnResult(sqlmock.NewResult(0, 1))
+
+	workerpkg.ProcessTask(ctx)
 	app.ProcessSignal <- tsk
+
 	time.Sleep(6 * time.Second)
 
 	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("Database update expectations not met: %v", err)
+		t.Errorf("Expectations not met: %v", err)
 	}
 }
 
-func TestWorkerPoolManagement(t *testing.T) {
+func TestTaskCancellation_WorkerAborts(t *testing.T) {
 	mockDB, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("Failed to create mock DB: %v", err)
@@ -46,27 +60,65 @@ func TestWorkerPoolManagement(t *testing.T) {
 
 	app.Databasehandle = mockDB
 	app.ProcessSignal = make(chan *task.Task, 100)
-	app.CancelSignal = make(chan string, 100)
 
-	for i := 0; i < 6; i++ {
-		mock.ExpectExec("^UPDATE tasks SET state").WillReturnResult(sqlmock.NewResult(0, 1))
+	ctx, cancel := setupTestCtx()
+	defer cancel()
+
+	leaseTime := time.Now().Add(8 * time.Second)
+	tsk := &task.Task{
+		ID:         "canceled-task",
+		State:      "leased",
+		LeaseUntil: leaseTime,
 	}
 
-	workerpkg.ProcessTask()
+	mock.ExpectQuery("SELECT state, lease_until FROM tasks WHERE id =").
+		WithArgs(tsk.ID).
+		WillReturnRows(sqlmock.NewRows([]string{"state", "lease_until"}).
+			AddRow("canceled", leaseTime))
 
-	now := time.Now()
-	for i := 0; i < 3; i++ {
-		tsk := task.NewTask("test", "payload", now.Add(-1*time.Hour))
-		tsk.State = "pending"
-		tsk.ID = string(rune('0' + i))
-
-		app.ProcessSignal <- tsk
-	}
+	workerpkg.ProcessTask(ctx)
+	app.ProcessSignal <- tsk
 
 	time.Sleep(6 * time.Second)
 
 	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("Database update expectations not met: %v", err)
+		t.Errorf("Worker did not abort as expected: %v", err)
+	}
+}
+
+func TestWorkerOwnershipCheck_LeaseChanged(t *testing.T) {
+	mockDB, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("Failed to create mock DB: %v", err)
+	}
+	defer mockDB.Close()
+	app.Databasehandle = mockDB
+	app.ProcessSignal = make(chan *task.Task, 100)
+
+	ctx, cancel := setupTestCtx()
+	defer cancel()
+
+	originalLease := time.Now().Add(8 * time.Second)
+	newLease := time.Now().Add(16 * time.Second)
+
+	tsk := &task.Task{
+		ID:         "stolen-task",
+		State:      "leased",
+		LeaseUntil: originalLease,
+	}
+
+	mock.ExpectQuery("SELECT state, lease_until FROM tasks WHERE id =").
+		WithArgs(tsk.ID).
+		WillReturnRows(sqlmock.NewRows([]string{"state", "lease_until"}).
+			AddRow("leased", newLease))
+
+	workerpkg.ProcessTask(ctx)
+	app.ProcessSignal <- tsk
+
+	time.Sleep(6 * time.Second)
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("Worker should have detected lease mismatch: %v", err)
 	}
 }
 
@@ -76,52 +128,21 @@ func TestSyncTaskToDB(t *testing.T) {
 		t.Fatalf("Failed to create mock DB: %v", err)
 	}
 	defer mockDB.Close()
-
 	app.Databasehandle = mockDB
 
-	now := time.Now()
-	tsk := task.NewTask("test", "payload", now)
-	tsk.State = "completed"
-	tsk.Retries = 2
+	tsk := &task.Task{
+		ID:      "sync-id",
+		State:   "completed",
+		Retries: 1,
+	}
 
 	mock.ExpectExec("^UPDATE tasks SET state").
-		WithArgs("completed", sqlmock.AnyArg(), sqlmock.AnyArg(), 2, "", sqlmock.AnyArg(), tsk.ID).
+		WithArgs("completed", nil, tsk.LeaseUntil, 1, "", sqlmock.AnyArg(), tsk.ID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	workerpkg.SyncTaskToDB(tsk)
 
 	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Logf("Database update expectations not met: %v", err)
-	}
-}
-
-func TestTaskCancellation(t *testing.T) {
-	mockDB, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("Failed to create mock DB: %v", err)
-	}
-	defer mockDB.Close()
-
-	app.Databasehandle = mockDB
-	app.ProcessSignal = make(chan *task.Task, 100)
-	app.CancelSignal = make(chan string, 100)
-
-	mock.ExpectExec("^UPDATE tasks SET state").WillReturnResult(sqlmock.NewResult(0, 1))
-
-	workerpkg.ProcessTask()
-
-	now := time.Now()
-	tsk := task.NewTask("test", "payload", now.Add(-1*time.Hour))
-	tsk.State = "pending"
-	tsk.ID = "canceled1"
-
-	app.ProcessSignal <- tsk
-
-	app.CancelSignal <- tsk.ID
-
-	time.Sleep(6 * time.Second)
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("Database update expectations not met: %v", err)
+		t.Errorf("SyncTaskToDB failed: %v", err)
 	}
 }

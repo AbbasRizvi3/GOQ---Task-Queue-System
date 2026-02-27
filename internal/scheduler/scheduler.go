@@ -8,6 +8,7 @@ import (
 
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/core/app"
 	"github.com/AbbasRizvi3/GOQ---Task-Queue-System/internal/models/task"
+	"github.com/gin-gonic/gin"
 )
 
 const (
@@ -63,6 +64,10 @@ func sendProcessSignal(rows *sql.Rows) {
 		if nextRunAtNull.Valid {
 			t.NextRunAt = nextRunAtNull.Time
 		}
+		app.WebsocketChannelManager.BroadcastJSON(t.UserID, gin.H{
+			"type":    "TASK_UPDATED",
+			"payload": t,
+		})
 		select {
 		case app.ProcessSignal <- &t:
 		default:

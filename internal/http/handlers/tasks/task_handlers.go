@@ -174,7 +174,7 @@ func RetryTaskHandler(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "task has exceeded max retries"})
 				return
 			}
-			_, err = app.Databasehandle.Exec("UPDATE tasks SET state = $1, next_run_at = $2, updated_at = $3, retries = $4 WHERE id = $5 AND user_id = $6",
+			_, err = app.Databasehandle.Exec("UPDATE tasks SET state = $1, next_run_at = $2, updated_at = $3, retries = $4, lease_until = NULL WHERE id = $5 AND user_id = $6",
 				"pending", time.Now(), time.Now(), taskk.Retries+1, id, user_id)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update task in database"})

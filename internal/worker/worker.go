@@ -63,16 +63,24 @@ func ProcessTask(ctx context.Context) {
 						fmt.Println("decreasing workers")
 						decreaseWorkers()
 					}()
+					assignedLease := task.LeaseUntil
 					fmt.Printf("Worker processing task %s\n", task.ID)
 					time.Sleep(5 * time.Second)
-					var currentState string
-					err := app.Databasehandle.QueryRow("SELECT state FROM tasks WHERE id = $1", task.ID).Scan(&currentState)
 
-					if err == nil && currentState == "canceled" {
-						t.Mu.Lock()
-						defer t.Mu.Unlock()
-						task.State = "canceled"
-						fmt.Printf("Worker detected task %s was canceled in DB, stopping.\n", task.ID)
+					var currentState string
+					var currentLease time.Time
+					err := app.Databasehandle.QueryRow(
+						"SELECT state, lease_until FROM tasks WHERE id = $1",
+						task.ID,
+					).Scan(&currentState, &currentLease)
+
+					if err != nil {
+						fmt.Printf("Error checking task status: %v\n", err)
+						return
+					}
+
+					if currentState == "canceled" || !currentLease.Equal(assignedLease) {
+						fmt.Printf("Worker for task %s lost ownership (State: %s). Aborting.\n", task.ID, currentState)
 						return
 					}
 

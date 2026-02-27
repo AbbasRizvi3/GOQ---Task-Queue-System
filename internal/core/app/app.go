@@ -9,7 +9,6 @@ import (
 )
 
 var ProcessSignal chan *task.Task = make(chan *task.Task, 100)
-var CancelSignal chan string = make(chan string, 100)
 var Databasehandle *sql.DB
 var MelodyInstance *melody.Melody = melody.New()
 var WebsocketChannelManager *socket.ChannelManager = socket.NewChannelManager()

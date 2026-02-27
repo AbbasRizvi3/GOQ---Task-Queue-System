@@ -3,6 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	_ "net/http/pprof"
 
@@ -33,12 +37,11 @@ func main() {
 		println("Database set up successfully")
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 	go scheduler.ScheduleTasks(ctx)
-	defer cancel()
 
-	go worker.ProcessTask()
+	go worker.ProcessTask(ctx)
 
 	router = routers.SetUpRoutes()
 	app.MelodyInstance.HandleConnect(func(s *melody.Session) {
@@ -67,10 +70,19 @@ func main() {
 	})
 
 	template.SetupTemplate(router)
-	err = router.Run(":8000")
-	if err != nil {
-		fmt.Printf("Error starting server: %v\n", err)
-	} else {
-		fmt.Println("Server started successfully on port 8000")
-	}
+
+	go func() {
+		err = router.Run(":8000")
+		if err != nil {
+			fmt.Printf("Error starting server: %v\n", err)
+		} else {
+			fmt.Println("Server started successfully on port 8000")
+		}
+	}()
+	<-ctx.Done()
+
+	fmt.Println("\nShutdown signal received. Closing intake and waiting for workers...")
+	time.Sleep(7 * time.Second)
+	fmt.Println("GOQ System exited cleanly.")
+
 }

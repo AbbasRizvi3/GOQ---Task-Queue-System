@@ -97,6 +97,6 @@ func SignupHandler(c *gin.Context) {
 		})
 		return
 	}
-	c.SetCookie("auth_token", token, 3600*24, "/", "", false, true)
+	c.SetCookie("auth_token", token, 3600*24, "/", "", true, true)
 	c.Redirect(http.StatusSeeOther, "/api/dashboard")
 }

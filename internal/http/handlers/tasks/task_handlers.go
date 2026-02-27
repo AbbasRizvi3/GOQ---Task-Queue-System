@@ -187,10 +187,6 @@ func RetryTaskHandler(c *gin.Context) {
 			})
 
 			c.JSON(http.StatusOK, gin.H{"message": "Task retried successfully"})
-
-			c.JSON(http.StatusOK, gin.H{
-				"message": "Task retried successfully",
-			})
 		}
 	} else {
 		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "method not allowed"})
@@ -216,11 +212,6 @@ func CancelTaskHandler(c *gin.Context) {
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update task in database"})
 				return
-			}
-			select {
-			case app.CancelSignal <- id:
-				fmt.Printf("Sent cancel signal for task %s to worker\n", id)
-			default:
 			}
 			updatedTask, _ := fetchTaskByID(id, user_id)
 			app.WebsocketChannelManager.BroadcastJSON(user_id, gin.H{

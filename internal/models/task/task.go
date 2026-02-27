@@ -69,46 +69,38 @@ func (t *Task) MarkCompleted() {
 	t.NextRunAt = time.Time{}
 }
 
-func (t *Task) MarkCanceled() {
-	t.Mu.Lock()
-	isMaxed := t.Retries == t.MaxRetries
-	t.Mu.Unlock()
-	if isMaxed {
-		t.MarkDead("Retries Exceeded")
-	} else {
-		t.State = "canceled"
-		t.UpdatedAt = time.Now()
-		t.NextRunAt = time.Time{}
-	}
-}
-
 func (t *Task) MarkFailed(reason string) {
 	t.Mu.Lock()
-	isMaxed := t.Retries == t.MaxRetries
-	t.Mu.Unlock()
-
-	if isMaxed {
-		t.MarkDead(reason)
-	} else {
-		now := time.Now()
-		t.Mu.Lock()
-		t.State = "retry"
-		baseDelay := 60 * time.Second
-		backoff := baseDelay * time.Duration(1<<uint(t.Retries-1))
-		halfBackoff := int64(backoff) / 2
-		var jitter time.Duration
-		if halfBackoff > 0 {
-			jitter = time.Duration(rand.Int63n(halfBackoff)) - backoff/4
-		} else {
-			jitter = 0
-		}
-
-		t.NextRunAt = now.Add(backoff + jitter)
-		t.Error = reason
-		t.UpdatedAt = now
-		t.Mu.Unlock()
-		fmt.Printf("Retryable: Task %s failed, will retry (attempt %d/%d) at %v (in ~%v)\n", t.ID, t.Retries, t.MaxRetries, t.NextRunAt, backoff+jitter)
+	defer t.Mu.Unlock()
+	t.Retries++
+	if t.Retries > t.MaxRetries {
+		t.State = "dead"
+		t.Error = fmt.Sprintf("Max retries reached (%d/%d). Last error: %s", t.Retries-1, t.MaxRetries, reason)
+		t.UpdatedAt = time.Now()
+		t.NextRunAt = time.Time{}
+		fmt.Printf("Fatal: Task %s is DEAD. Max retries (%d) exceeded. Error: %s\n", t.ID, t.MaxRetries, reason)
+		return
 	}
+	now := time.Now()
+	t.State = "retry"
+	t.Error = reason
+	t.UpdatedAt = now
+	shift := uint(0)
+	if t.Retries > 1 {
+		shift = uint(t.Retries - 1)
+	}
+	baseDelay := 60 * time.Second
+	backoff := baseDelay * time.Duration(1<<shift)
+	halfBackoff := int64(backoff) / 2
+	var jitter time.Duration
+	if halfBackoff > 0 {
+		jitter = time.Duration(rand.Int63n(halfBackoff)) - backoff/4
+	}
+
+	t.NextRunAt = now.Add(backoff + jitter)
+
+	fmt.Printf("Retryable: Task %s failed, scheduled retry (%d/%d) at %v\n",
+		t.ID, t.Retries, t.MaxRetries, t.NextRunAt)
 }
 
 func (t *Task) MarkDead(reason string) {
